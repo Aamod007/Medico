@@ -1,0 +1,723 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  CUSTOMER
+  PHARMACIST
+  ADMIN
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  CREATED
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  RAZORPAY
+  COD
+}
+
+enum PrescriptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum LabBookingStatus {
+  SCHEDULED
+  SAMPLE_COLLECTED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+enum NotificationType {
+  ORDER
+  PRESCRIPTION
+  PAYMENT
+  PROMO
+  SYSTEM
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// ============================================================================
+// USER & ADDRESS
+// ============================================================================
+
+model User {
+  id              String        @id @default(uuid())
+  name            String
+  email           String        @unique
+  phone           String        @unique
+  passwordHash    String?
+  role            Role          @default(CUSTOMER)
+  isActive        Boolean       @default(true)
+  isPhoneVerified Boolean       @default(false)
+  isEmailVerified Boolean       @default(false)
+  avatar          String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  addresses       Address[]
+  orders          Order[]
+  prescriptions   Prescription[]      @relation("CustomerPrescriptions")
+  approvedRx      Prescription[]      @relation("PharmacistApprovals")
+  reviews         Review[]
+  cart            Cart?
+  wishlist        Wishlist[]
+  labBookings     LabBooking[]
+  appointments    Appointment[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  statusUpdates   OrderStatusHistory[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+model Address {
+  id           String      @id @default(uuid())
+  userId       String
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  landmark     String?
+  city         String
+  state        String
+  pincode      String
+  type         AddressType @default(HOME)
+  isDefault    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  labBookings  LabBooking[]
+
+  @@index([userId])
+  @@index([pincode])
+}
+
+// ============================================================================
+// CATALOG: CATEGORIES, BRANDS, PRODUCTS, VARIANTS, BATCHES
+// ============================================================================
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String?
+  icon        String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model Brand {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  logo        String?
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model Product {
+  id                  String           @id @default(uuid())
+  name                String
+  slug                String           @unique
+  description         String
+  composition         String?          // e.g. "Paracetamol 500mg, Caffeine 30mg"
+  uses                String?          // Indications/Usage
+  sideEffects         String?          // Common adverse reactions
+  dosage              String?          // Dosage instructions
+  storageInstructions String?          // Storage conditions (e.g. "Store below 25C")
+  manufacturer        String
+  countryOfOrigin     String           @default("India")
+  hsnCode             String           @default("300490")
+  gstRate             Decimal          @default(12.0) @db.Decimal(5, 2)
+  prescriptionRequired Boolean         @default(false)
+  scheduleType        String?          // Schedule H, H1, X, or OTC
+  brandId             String
+  categoryId          String
+  images              String[]         @default([])
+  isFeatured          Boolean          @default(false)
+  isBestSeller        Boolean          @default(false)
+  isActive            Boolean          @default(true)
+  deletedAt           DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  brand               Brand            @relation(fields: [brandId], references: [id])
+  category            Category         @relation(fields: [categoryId], references: [id])
+  variants            ProductVariant[]
+  reviews             Review[]
+  wishlist            Wishlist[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isFeatured])
+  @@index([isBestSeller])
+  @@index([prescriptionRequired])
+  @@index([isActive])
+}
+
+model ProductVariant {
+  id              String           @id @default(uuid())
+  productId       String
+  sku             String           @unique
+  name            String           // e.g. "Strip of 10 Tablets", "Bottle of 200ml"
+  packSize        String           // e.g. "10 Tablets", "200 ml"
+  price           Decimal          @db.Decimal(10, 2) // Selling price (tax inclusive)
+  mrp             Decimal          @db.Decimal(10, 2) // Max retail price
+  discountPercent Int              @default(0)
+  isDefault       Boolean          @default(false)
+  weightGrams     Int              @default(100)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batches         InventoryBatch[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([isActive])
+}
+
+model InventoryBatch {
+  id          String         @id @default(uuid())
+  variantId   String
+  batchNumber String
+  mfgDate     DateTime
+  expiryDate  DateTime
+  quantity    Int            @default(0) // Available sellable units
+  costPrice   Decimal        @db.Decimal(10, 2)
+  isBlocked   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
+  @@index([expiryDate])
+  @@index([batchNumber])
+}
+
+// ============================================================================
+// CART & WISHLIST
+// ============================================================================
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String?    @unique
+  sessionId String?    @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model CartItem {
+  id        String         @id @default(uuid())
+  cartId    String
+  variantId String
+  quantity  Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+// ============================================================================
+// COUPONS & DISCOUNTS
+// ============================================================================
+
+model Coupon {
+  id            String       @id @default(uuid())
+  code          String       @unique
+  description   String
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Decimal      @db.Decimal(10, 2) // Percentage or flat rupees
+  minOrderValue Decimal      @default(0) @db.Decimal(10, 2)
+  maxDiscount   Decimal?     @db.Decimal(10, 2) // Cap on percentage discount
+  usageLimit    Int          @default(1000)
+  usedCount     Int          @default(0)
+  startDate     DateTime     @default(now())
+  endDate       DateTime
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  orders        Order[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+// ============================================================================
+// ORDERS & FULFILLMENT
+// ============================================================================
+
+model Order {
+  id             String               @id @default(uuid())
+  orderNumber    String               @unique // e.g. "MED-2026-100234"
+  userId         String
+  addressId      String
+  status         OrderStatus          @default(PLACED)
+  subtotal       Decimal              @db.Decimal(10, 2)
+  discount       Decimal              @default(0) @db.Decimal(10, 2)
+  gstAmount      Decimal              @default(0) @db.Decimal(10, 2)
+  deliveryFee    Decimal              @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal              @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod        @default(RAZORPAY)
+  paymentStatus  PaymentStatus        @default(PENDING)
+  prescriptionId String?
+  couponId       String?
+  deliverySlot   String?
+  notes          String?
+  cancelReason   String?
+  invoiceUrl     String?
+  isPaid         Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user           User                 @relation(fields: [userId], references: [id])
+  address        Address              @relation(fields: [addressId], references: [id])
+  prescription   Prescription?        @relation(fields: [prescriptionId], references: [id])
+  coupon         Coupon?              @relation(fields: [couponId], references: [id])
+  items          OrderItem[]
+  statusHistory  OrderStatusHistory[]
+  payments       Payment[]
+  refunds        Refund[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String         @id @default(uuid())
+  orderId     String
+  variantId   String
+  productName String
+  packSize    String
+  sku         String
+  price       Decimal        @db.Decimal(10, 2)
+  mrp         Decimal        @db.Decimal(10, 2)
+  gstRate     Decimal        @db.Decimal(5, 2)
+  gstAmount   Decimal        @db.Decimal(10, 2)
+  quantity    Int
+  subtotal    Decimal        @db.Decimal(10, 2)
+
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([variantId])
+}
+
+model OrderStatusHistory {
+  id              String      @id @default(uuid())
+  orderId         String
+  status          OrderStatus
+  note            String?
+  changedByUserId String?
+  createdAt       DateTime    @default(now())
+
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy       User?       @relation(fields: [changedByUserId], references: [id])
+
+  @@index([orderId])
+}
+
+// ============================================================================
+// PAYMENTS & REFUNDS (RAZORPAY INTEGRATION)
+// ============================================================================
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  method            String?       // UPI, CARD, NETBANKING, WALLET, COD
+  errorDescription  String?
+  rawResponse       Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds           Refund[]
+
+  @@index([orderId])
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
+  @@index([status])
+}
+
+model Refund {
+  id                String   @id @default(uuid())
+  paymentId         String
+  orderId           String
+  razorpayRefundId  String?  @unique
+  amount            Decimal  @db.Decimal(10, 2)
+  reason            String
+  status            String   @default("PENDING") // PENDING, PROCESSED, FAILED
+  initiatedByUserId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  payment           Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([razorpayRefundId])
+}
+
+// ============================================================================
+// PRESCRIPTIONS (PHARMACY COMPLIANCE)
+// ============================================================================
+
+model Prescription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  fileUrl                String
+  fileType               String             // image/jpeg, image/png, application/pdf
+  originalName           String
+  fileSize               Int
+  status                 PrescriptionStatus @default(PENDING)
+  rejectionReason        String?
+  reviewedByPharmacistId String?
+  reviewedAt             DateTime?
+  notes                  String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user                   User               @relation("CustomerPrescriptions", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy             User?              @relation("PharmacistApprovals", fields: [reviewedByPharmacistId], references: [id])
+  orders                 Order[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([reviewedByPharmacistId])
+}
+
+// ============================================================================
+// REVIEWS & RATINGS
+// ============================================================================
+
+model Review {
+  id                 String   @id @default(uuid())
+  productId          String
+  userId             String
+  rating             Int      @default(5)
+  title              String?
+  comment            String
+  isVerifiedPurchase Boolean  @default(true)
+  isApproved         Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([isApproved])
+}
+
+// ============================================================================
+// LAB TESTS & BOOKINGS
+// ============================================================================
+
+model LabTest {
+  id             String       @id @default(uuid())
+  name           String
+  slug           String       @unique
+  description    String
+  category       String       // e.g. "Full Body Checkup", "Diabetes", "Thyroid"
+  price          Decimal      @db.Decimal(10, 2)
+  mrp            Decimal      @db.Decimal(10, 2)
+  sampleType     String       // e.g. "Blood", "Urine", "Blood & Urine"
+  fastingRequired Boolean     @default(false)
+  reportTimeHours Int         @default(24)
+  testParameters String[]     @default([])
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  bookings       LabBooking[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([isActive])
+}
+
+model LabBooking {
+  id                   String           @id @default(uuid())
+  bookingNumber        String           @unique // e.g. "LAB-2026-9021"
+  userId               String
+  labTestId            String
+  patientName          String
+  patientAge           Int
+  patientGender        Gender
+  sampleCollectionDate DateTime
+  timeSlot             String           // e.g. "07:00 AM - 08:00 AM"
+  addressId            String
+  status               LabBookingStatus @default(SCHEDULED)
+  reportUrl            String?
+  paymentStatus        PaymentStatus    @default(PENDING)
+  totalAmount          Decimal          @db.Decimal(10, 2)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  labTest              LabTest          @relation(fields: [labTestId], references: [id])
+  address              Address          @relation(fields: [addressId], references: [id])
+
+  @@index([userId])
+  @@index([bookingNumber])
+  @@index([status])
+}
+
+// ============================================================================
+// DOCTORS & ONLINE CONSULTATIONS
+// ============================================================================
+
+model Doctor {
+  id                 String        @id @default(uuid())
+  name               String
+  slug               String        @unique
+  specialization     String        // e.g. "General Physician", "Dermatologist"
+  qualification      String        // e.g. "MBBS, MD (Medicine)"
+  experienceYears    Int
+  registrationNumber String
+  consultationFee    Decimal       @db.Decimal(10, 2)
+  avatar             String?
+  bio                String
+  languages          String[]      @default(["English", "Hindi"])
+  isAvailable        Boolean       @default(true)
+  rating             Decimal       @default(4.8) @db.Decimal(3, 1)
+  reviewCount        Int           @default(120)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  appointments       Appointment[]
+
+  @@index([slug])
+  @@index([specialization])
+  @@index([isAvailable])
+}
+
+model Appointment {
+  id                String            @id @default(uuid())
+  appointmentNumber String            @unique // e.g. "APT-2026-3041"
+  userId            String
+  doctorId          String
+  patientName       String
+  patientAge        Int
+  patientGender     Gender
+  appointmentDate   DateTime
+  timeSlot          String            // e.g. "04:30 PM - 05:00 PM"
+  consultationType  String            @default("VIDEO") // VIDEO, AUDIO
+  videoRoomUrl      String?
+  status            AppointmentStatus @default(SCHEDULED)
+  paymentStatus     PaymentStatus     @default(PENDING)
+  fee               Decimal           @db.Decimal(10, 2)
+  notes             String?
+  prescriptionNotes String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor            Doctor            @relation(fields: [doctorId], references: [id])
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([appointmentNumber])
+  @@index([status])
+}
+
+// ============================================================================
+// NOTIFICATIONS & AUDIT LOGS
+// ============================================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(ORDER)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // e.g. "PRESCRIPTION_APPROVED", "ORDER_STATUS_CHANGED"
+  entity     String   // "Order", "Prescription", "Product", "User"
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// SITE CMS & SYSTEM SETTINGS
+// ============================================================================
+
+model Banner {
+  id         String   @id @default(uuid())
+  title      String
+  subtitle   String?
+  imageUrl   String
+  targetUrl  String   @default("/products")
+  buttonText String   @default("Shop Now")
+  position   String   @default("HERO") // HERO, PROMO_LEFT, PROMO_MID, PROMO_RIGHT
+  isActive   Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([position])
+  @@index([isActive])
+}
+
+model Faq {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String   @default("GENERAL")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}

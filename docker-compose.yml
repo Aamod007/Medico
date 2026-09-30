@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medico-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medico_user
+      POSTGRES_PASSWORD: medico_secret_pass
+      POSTGRES_DB: medico_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - medico_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medico_user -d medico_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: medico-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - medico_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: medico-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://medico_user:medico_secret_pass@postgres:5432/medico_db?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 5000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    volumes:
+      - medico_uploads:/app/apps/api/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: medico-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+
+volumes:
+  medico_pg_data:
+  medico_redis_data:
+  medico_uploads:

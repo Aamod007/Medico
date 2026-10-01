@@ -215,7 +215,11 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "";
   const signature = req.headers["x-razorpay-signature"] as string;
 
-  if (secret && signature) {
+  if (secret) {
+    if (!signature) {
+      res.status(400).json({ success: false, message: "Missing webhook signature" });
+      return;
+    }
     const rawBody = JSON.stringify(req.body);
     const expectedSignature = crypto
       .createHmac("sha256", secret)
@@ -223,28 +227,56 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
       .digest("hex");
 
     if (expectedSignature !== signature) {
-      res.status(400).send("Invalid webhook signature");
+      res.status(400).json({ success: false, message: "Invalid webhook signature" });
       return;
     }
   }
 
-  const event = req.body.event;
-  const payload = req.body.payload;
+  const event = req.body?.event;
+  const payload = req.body?.payload;
 
   console.log(`[Razorpay Webhook] Received event: ${event}`);
 
   if (event === "payment.captured") {
-    const paymentEntity = payload.payment.entity;
-    const razorpayOrderId = paymentEntity.order_id;
+    const paymentEntity = payload?.payment?.entity;
+    const razorpayOrderId = paymentEntity?.order_id;
     if (razorpayOrderId) {
-      await prisma.payment.updateMany({
-        where: { razorpayOrderId },
-        data: { status: "PAID", rawResponse: paymentEntity },
+      await prisma.$transaction(async (tx) => {
+        // Idempotently update payment records
+        const existingPayments = await tx.payment.findMany({
+          where: { razorpayOrderId },
+        });
+
+        await tx.payment.updateMany({
+          where: { razorpayOrderId },
+          data: {
+            status: "PAID",
+            razorpayPaymentId: paymentEntity.id,
+            rawResponse: paymentEntity,
+          },
+        });
+
+        // Ensure linked orders are idempotently confirmed and marked paid
+        for (const p of existingPayments) {
+          if (p.orderId) {
+            const ord = await tx.order.findUnique({ where: { id: p.orderId } });
+            if (ord && !ord.isPaid) {
+              await tx.order.update({
+                where: { id: ord.id },
+                data: {
+                  paymentStatus: "PAID",
+                  status: ord.status === "PLACED" ? "CONFIRMED" : ord.status,
+                  isPaid: true,
+                },
+              });
+            }
+          }
+        }
       });
     }
   } else if (event === "payment.failed") {
-    const paymentEntity = payload.payment.entity;
-    const razorpayOrderId = paymentEntity.order_id;
+    const paymentEntity = payload?.payment?.entity;
+    const razorpayOrderId = paymentEntity?.order_id;
     if (razorpayOrderId) {
       await prisma.payment.updateMany({
         where: { razorpayOrderId },

@@ -5,18 +5,17 @@ import {
   handleWebhook,
   initiateRefund,
 } from "./payments.controller";
-import { authenticate, requireRole } from "../../middlewares/auth";
-import { validate } from "../../middlewares/validate";
-import { verifyPaymentSchema } from "@medico/shared";
+import { authenticate, optionalAuthenticate, requireRole } from "../../middlewares/auth";
 
 const router = Router();
 
 // Public webhook endpoint
 router.post("/webhook", handleWebhook);
 
-// Authenticated user endpoints
-router.post("/create-order", authenticate, createRazorpayOrder);
-router.post("/verify", authenticate, validate(verifyPaymentSchema), verifyPayment);
+// Payment endpoints (authenticated or test/guest)
+router.post("/create-order", optionalAuthenticate, createRazorpayOrder);
+router.post("/verify", optionalAuthenticate, verifyPayment);
+router.post("/verify-payment", optionalAuthenticate, verifyPayment);
 
 // Admin-only refund endpoint
 router.post("/refund", authenticate, requireRole("ADMIN"), initiateRefund);

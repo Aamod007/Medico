@@ -190,30 +190,41 @@ export default function CheckoutPage() {
         return;
       }
 
+      const selectedAddress = addresses.find((a: any) => a.id === selectedAddressId);
+
       // Open Razorpay Modal
       const options = {
-        key: keyId,
+        key: keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_TiWDGQAMVvys6R",
         amount,
-        currency,
+        currency: currency || "INR",
         name: "Pharmico Healthcare",
         description: `Order #${order.orderNumber}`,
         order_id: razorpayOrderId,
+        prefill: {
+          name: selectedAddress?.fullName || "",
+          contact: selectedAddress?.phone || "",
+        },
         theme: {
           color: "#0B4A3A",
         },
         handler: async function (response: any) {
-          const verifyRes = await api.post("/payments/verify", {
-            orderId: order.id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
+          try {
+            const verifyRes = await api.post("/payments/verify", {
+              orderId: order.id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
 
-          if (verifyRes.success) {
-            await clearCart();
-            router.push(`/orders/${order.id}`);
-          } else {
-            alert("Payment signature verification failed");
+            if (verifyRes.success) {
+              await clearCart();
+              router.push(`/orders/${order.id}`);
+            } else {
+              alert(verifyRes.message || "Payment signature verification failed");
+              setIsProcessing(false);
+            }
+          } catch (verErr: any) {
+            alert(verErr.message || "Payment verification error");
             setIsProcessing(false);
           }
         },
@@ -225,6 +236,11 @@ export default function CheckoutPage() {
       };
 
       const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (failResponse: any) {
+        console.error("Razorpay payment failed:", failResponse.error);
+        alert(`Payment Failed: ${failResponse.error?.description || failResponse.error?.reason || "Transaction was declined"}`);
+        setIsProcessing(false);
+      });
       rzp.open();
     } catch (err: any) {
       console.error("Checkout error:", err);

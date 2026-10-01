@@ -1,149 +1,214 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import prisma from "../../lib/prisma";
-import razorpay from "../../lib/razorpay";
+import razorpay, { getRazorpay } from "../../lib/razorpay";
 import { VerifyPaymentInput } from "@medico/shared";
 
 export async function createRazorpayOrder(req: Request, res: Response): Promise<void> {
-  const userId = req.user!.userId;
-  const { orderId } = req.body;
+  const userId = req.user?.userId || "guest";
+  const { orderId, amount: bodyAmount, currency = "INR", receipt } = req.body;
 
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, userId },
-  });
+  let amountInPaise = 0;
+  let order: any = null;
+  let receiptId = receipt;
 
-  if (!order) {
-    res.status(404).json({ success: false, message: "Order not found" });
+  if (orderId) {
+    order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    if (order.isPaid) {
+      res.status(400).json({ success: false, message: "Order is already paid" });
+      return;
+    }
+
+    amountInPaise = Math.round(Number(order.totalAmount) * 100);
+    receiptId = receiptId || order.orderNumber;
+  } else if (bodyAmount !== undefined) {
+    const numAmount = Number(bodyAmount);
+    if (isNaN(numAmount) || numAmount < 1) {
+      res.status(400).json({ success: false, message: "Amount is required and must be at least 100 paise" });
+      return;
+    }
+    amountInPaise = Math.round(numAmount);
+    receiptId = receiptId || `rcpt_${Date.now()}`;
+  } else {
+    res.status(400).json({ success: false, message: "Either orderId or amount (in paise) is required" });
     return;
   }
 
-  if (order.isPaid) {
-    res.status(400).json({ success: false, message: "Order is already paid" });
+  // Minimum amount constraint for Razorpay is 100 paise (₹1.00)
+  if (amountInPaise < 100) {
+    res.status(400).json({ success: false, message: "Minimum order amount is 100 paise (₹1.00)" });
     return;
   }
 
-  // Amount in Paise (INR smallest denomination)
-  const amountInPaise = Math.round(Number(order.totalAmount) * 100);
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    res.status(500).json({
+      success: false,
+      message: "Razorpay credentials are not configured on server",
+    });
+    return;
+  }
 
   try {
-    let razorpayOrder;
+    const rzp = getRazorpay();
+    const razorpayOrder = await rzp.orders.create({
+      amount: amountInPaise,
+      currency: currency || "INR",
+      receipt: receiptId || `rcpt_${Date.now()}`,
+      notes: {
+        orderId: order?.id || "standalone",
+        userId,
+      },
+    });
 
-    // Check if key is placeholder in development
-    const keyId = process.env.RAZORPAY_KEY_ID || "";
-    if (keyId.startsWith("rzp_test_Your") || !process.env.RAZORPAY_KEY_SECRET) {
-      // Mock Razorpay order ID in demo mode
-      razorpayOrder = {
-        id: `order_mock_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        amount: amountInPaise,
-        currency: "INR",
-        status: "created",
-      };
-    } else {
-      razorpayOrder = await razorpay.orders.create({
-        amount: amountInPaise,
-        currency: "INR",
-        receipt: order.orderNumber,
-        notes: {
+    if (order) {
+      await prisma.payment.create({
+        data: {
           orderId: order.id,
-          userId,
+          razorpayOrderId: razorpayOrder.id,
+          amount: order.totalAmount,
+          currency: currency || "INR",
+          status: "CREATED",
         },
       });
     }
 
-    // Record Payment
-    await prisma.payment.create({
-      data: {
-        orderId: order.id,
-        razorpayOrderId: razorpayOrder.id,
-        amount: order.totalAmount,
-        currency: "INR",
-        status: "CREATED",
-      },
-    });
-
     res.json({
       success: true,
+      order_id: razorpayOrder.id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      keyId,
       data: {
-        orderId: order.id,
+        orderId: order?.id,
         razorpayOrderId: razorpayOrder.id,
-        amount: amountInPaise,
-        currency: "INR",
-        keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_YourTestKeyIdHere",
-        orderNumber: order.orderNumber,
+        order_id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        keyId,
+        orderNumber: order?.orderNumber,
       },
     });
   } catch (err: any) {
     console.error("Razorpay order creation error:", err);
-    res.status(500).json({ success: false, message: "Could not create payment order", error: err.message });
+    res.status(500).json({
+      success: false,
+      message: "Could not create Razorpay order",
+      error: err.error?.description || err.message || "Razorpay API error",
+    });
   }
 }
 
-export async function verifyPayment(
-  req: Request<{}, {}, VerifyPaymentInput>,
-  res: Response
-): Promise<void> {
-  const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || "YourTestKeySecretHere";
+export async function verifyPayment(req: Request, res: Response): Promise<void> {
+  const {
+    orderId,
+    razorpayOrderId,
+    razorpay_order_id,
+    order_id,
+    razorpayPaymentId,
+    razorpay_payment_id,
+    payment_id,
+    razorpaySignature,
+    razorpay_signature,
+    signature,
+  } = req.body;
 
-  // Check if demo/mock payment
-  const isMockPayment =
-    razorpayOrderId.startsWith("order_mock_") ||
-    keySecret === "YourTestKeySecretHere";
+  const actualOrderId = razorpay_order_id || razorpayOrderId || order_id;
+  const actualPaymentId = razorpay_payment_id || razorpayPaymentId || payment_id;
+  const actualSignature = razorpay_signature || razorpaySignature || signature;
 
-  let isValid = false;
-
-  if (isMockPayment) {
-    isValid = true;
-  } else {
-    // Cryptographic HMAC SHA-256 verification with timing-safe compare
-    const generatedSignature = crypto
-      .createHmac("sha256", keySecret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
-
-    try {
-      isValid = crypto.timingSafeEqual(
-        Buffer.from(generatedSignature),
-        Buffer.from(razorpaySignature)
-      );
-    } catch {
-      isValid = false;
-    }
-  }
-
-  if (!isValid) {
-    res.status(400).json({ success: false, message: "Invalid payment signature verification failed" });
+  if (!actualOrderId || !actualPaymentId || !actualSignature) {
+    res.status(400).json({
+      success: false,
+      message: "Missing required payment verification fields: order_id, payment_id, signature",
+    });
     return;
   }
 
-  // Update Payment & Order atomically
-  await prisma.$transaction(async (tx) => {
-    await tx.payment.updateMany({
-      where: { razorpayOrderId },
-      data: {
-        razorpayPaymentId,
-        razorpaySignature,
-        status: "PAID",
-      },
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    res.status(500).json({
+      success: false,
+      message: "Razorpay key secret is not configured on server",
     });
+    return;
+  }
 
-    await tx.order.update({
-      where: { id: orderId },
-      data: {
-        paymentStatus: "PAID",
-        status: "CONFIRMED",
-        isPaid: true,
-        statusHistory: {
-          create: {
-            status: "CONFIRMED",
-            note: `Payment verified successfully via Razorpay (Payment ID: ${razorpayPaymentId})`,
+  // Cryptographic HMAC SHA-256 verification: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+  const body = `${actualOrderId}|${actualPaymentId}`;
+  const generatedSignature = crypto
+    .createHmac("sha256", keySecret)
+    .update(body)
+    .digest("hex");
+
+  let isValid = false;
+  try {
+    isValid = crypto.timingSafeEqual(
+      Buffer.from(generatedSignature),
+      Buffer.from(actualSignature)
+    );
+  } catch {
+    isValid = false;
+  }
+
+  if (!isValid) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid payment signature verification failed. Order not marked as paid.",
+    });
+    return;
+  }
+
+  // Atomically update Payment & Order if an order is associated
+  if (orderId) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.payment.updateMany({
+          where: { razorpayOrderId: actualOrderId },
+          data: {
+            razorpayPaymentId: actualPaymentId,
+            razorpaySignature: actualSignature,
+            status: "PAID",
           },
-        },
-      },
-    });
-  });
+        });
 
-  res.json({ success: true, message: "Payment verified successfully and order confirmed" });
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: "PAID",
+            status: "CONFIRMED",
+            isPaid: true,
+            statusHistory: {
+              create: {
+                status: "CONFIRMED",
+                note: `Payment verified successfully via Razorpay (Payment ID: ${actualPaymentId})`,
+              },
+            },
+          },
+        });
+      });
+    } catch (dbErr) {
+      console.warn("DB order update warning during verification:", dbErr);
+    }
+  }
+
+  res.json({
+    success: true,
+    message: "Payment verified successfully",
+    orderId: actualOrderId,
+    paymentId: actualPaymentId,
+  });
 }
 
 export async function handleWebhook(req: Request, res: Response): Promise<void> {

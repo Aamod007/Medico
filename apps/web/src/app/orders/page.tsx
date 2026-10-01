@@ -162,14 +162,12 @@ export default function OrdersHistoryPage() {
                     <span className="text-lg font-black text-gray-900">
                       ₹{Number(order.totalAmount).toLocaleString("en-IN")}
                     </span>
-                    <a
-                      href={`/api/orders/${order.id}/invoice`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href={`/orders/${order.id}/invoice`}
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full text-xs transition inline-flex items-center gap-1.5"
                     >
-                      <FileText className="w-3.5 h-3.5" /> GST Invoice
-                    </a>
+                      <FileText className="w-3.5 h-3.5" /> View Invoice
+                    </Link>
                     <Link
                       href={`/orders/${order.id}`}
                       className="px-4 py-2 bg-[#0B4A3A] hover:bg-[#07362a] text-white font-semibold rounded-full text-xs transition inline-flex items-center gap-1.5"

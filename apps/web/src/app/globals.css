@@ -65,3 +65,24 @@ body {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Print-optimized styling for Invoices */
+@media print {
+  header, footer, nav, aside, .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-invoice-container {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

@@ -21,7 +21,7 @@ export async function createOrder(
   }
 
   // 2. Fetch User's Cart
-  const cart = await prisma.cart.findUnique({
+  let cart = await prisma.cart.findUnique({
     where: { userId },
     include: {
       items: {
@@ -42,6 +42,35 @@ export async function createOrder(
       },
     },
   });
+
+  const sessionId = (req.headers["x-session-id"] as string) || req.cookies?.cartSessionId;
+  if ((!cart || cart.items.length === 0) && sessionId) {
+    const sessionCart = await prisma.cart.findUnique({
+      where: { sessionId },
+      include: {
+        items: {
+          include: {
+            variant: {
+              include: {
+                product: true,
+                batches: {
+                  where: {
+                    quantity: { gt: 0 },
+                    expiryDate: { gt: new Date() },
+                    isBlocked: false,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (sessionCart && sessionCart.items.length > 0) {
+      cart = sessionCart;
+    }
+  }
 
   if (!cart || cart.items.length === 0) {
     res.status(400).json({ success: false, message: "Your cart is empty" });

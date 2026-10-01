@@ -108,7 +108,7 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
 
       {/* Modern Invoice Card matching reference design */}
       <div className="print-invoice-container bg-white rounded-[32px] border border-neutral-200/90 shadow-xl shadow-neutral-100 p-8 sm:p-12 max-w-2xl mx-auto font-sans text-neutral-900 transition-all">
-        {/* Header: Title, Invoice Number, and Brand Icon */}
+        {/* Header: Title and Invoice Number */}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-950">
@@ -120,18 +120,6 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
                 #{order.orderNumber?.startsWith("#") ? order.orderNumber.slice(1) : order.orderNumber || "TSN-904824"}
               </span>
             </div>
-          </div>
-
-          {/* Minimalist Geometric Logo Icon Badge */}
-          <div className="w-12 h-12 bg-neutral-950 rounded-2xl flex items-center justify-center text-white shadow-md flex-shrink-0">
-            <svg
-              className="w-6 h-6 text-white"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M4 14C4 8.47715 8.47715 4 14 4V14H4Z" />
-              <path d="M14 10C16.2091 10 18 11.7909 18 14C18 16.2091 16.2091 18 14 18V10Z" />
-            </svg>
           </div>
         </div>
 

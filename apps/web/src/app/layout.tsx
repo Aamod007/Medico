@@ -28,7 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-[#F4F6F5] text-[#0F2A22] antialiased">
-        <ClerkProvider>
+        <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        >
           <Header />
           <PillNav />
           <main className="flex-1">{children}</main>

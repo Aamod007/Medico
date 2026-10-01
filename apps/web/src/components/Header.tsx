@@ -13,7 +13,6 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Navigation,
   CheckCircle2,
   Truck,
   ShieldCheck,
@@ -29,7 +28,7 @@ import {
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import { api } from "@/lib/api";
-import { resolvePincode, detectUserLocation } from "@/lib/location";
+import { resolvePincode } from "@/lib/location";
 import { SignInButton, Show, UserButton } from "@clerk/nextjs";
 
 export default function Header() {
@@ -59,7 +58,6 @@ export default function Header() {
   // Delivery location management
   const [modalPincode, setModalPincode] = useState("");
   const [pincodeError, setPincodeError] = useState("");
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const popularCities = [
     { name: "Bangalore", pin: "560103", state: "Karnataka" },
@@ -178,45 +176,6 @@ export default function Header() {
     }
   };
 
-  const [detectStatus, setDetectStatus] = useState<"idle" | "requesting" | "detecting" | "done">("idle");
-
-  const handleDetectLocation = async () => {
-    setIsDetectingLocation(true);
-    setDetectStatus("requesting");
-    setPincodeError("");
-    try {
-      // Short delay so the "Requesting…" label is visible to the user
-      await new Promise((r) => setTimeout(r, 300));
-      setDetectStatus("detecting");
-
-      const res = await detectUserLocation();
-
-      if (res.city && res.pincode) {
-        setCity(res.city);
-        setPincode(res.pincode);
-        setModalPincode(res.pincode);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("medico_pincode", res.pincode);
-          localStorage.setItem("medico_city", res.city);
-          window.dispatchEvent(
-            new CustomEvent("medico-location-changed", { detail: { pincode: res.pincode, city: res.city } })
-          );
-        }
-        setDetectStatus("done");
-        setTimeout(() => setIsDeliveryDropdownOpen(false), 400);
-      } else {
-        setPincodeError(
-          res.error ||
-            "Could not detect your location. Please enter your PIN code or select a city below."
-        );
-      }
-    } catch {
-      setPincodeError("Detection failed. Please enter your PIN code manually.");
-    } finally {
-      setIsDetectingLocation(false);
-      setTimeout(() => setDetectStatus("idle"), 2000);
-    }
-  };
 
   // Search autocomplete state
   const [searchQuery, setSearchQuery] = useState("");
@@ -373,33 +332,6 @@ export default function Header() {
                     {pincodeError && <p className="text-[10px] font-semibold text-red-600 mt-1 pl-1">{pincodeError}</p>}
                   </form>
 
-                  {/* Detect Location Button */}
-                  <button
-                    type="button"
-                    data-testid="detect-location-btn"
-                    onClick={handleDetectLocation}
-                    disabled={isDetectingLocation}
-                    className={`w-full mb-2 py-2 px-3 rounded-xl border border-dashed text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-70 ${
-                      detectStatus === "done"
-                        ? "border-[#10B981] bg-[#10B981]/10 text-[#0B4A3A]"
-                        : "border-[#10B981] bg-[#10B981]/5 hover:bg-[#10B981]/10 text-[#0B4A3A]"
-                    }`}
-                  >
-                    <Navigation
-                      className={`w-3.5 h-3.5 text-[#10B981] flex-shrink-0 ${
-                        isDetectingLocation ? "animate-pulse" : ""
-                      }`}
-                    />
-                    <span>
-                      {detectStatus === "requesting"
-                        ? "Allow location access…"
-                        : detectStatus === "detecting"
-                        ? "Detecting your location…"
-                        : detectStatus === "done"
-                        ? "✓ Location detected!"
-                        : "Detect My Location"}
-                    </span>
-                  </button>
 
                   <div className="border-t border-gray-100 my-1" />
 

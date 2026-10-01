@@ -342,6 +342,7 @@ export async function downloadInvoice(req: Request<{ id: string }>, res: Respons
   const userId = req.user?.userId;
   const userRole = req.user?.role;
   const orderId = req.params.id;
+  const mode = (req.query.mode as string) === "inline" ? "inline" : "attachment";
 
   const whereClause: any = {
     OR: [{ id: orderId }, { orderNumber: orderId }],
@@ -389,6 +390,7 @@ export async function downloadInvoice(req: Request<{ id: string }>, res: Respons
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
     },
-    res
+    res,
+    mode as "inline" | "attachment"
   );
 }

@@ -76,6 +76,18 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
     }
   };
 
+  const handleDownloadPDF = () => {
+    const invoiceUrl = `/api/orders/${order.id}/invoice`;
+    // Open PDF in new tab for viewing (inline mode)
+    window.open(`${invoiceUrl}?mode=inline`, "_blank");
+    // Also trigger actual file download via hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = invoiceUrl; // default mode = attachment (download)
+    document.body.appendChild(iframe);
+    setTimeout(() => iframe.remove(), 10000);
+  };
+
   return (
     <div className="w-full">
       {/* Action buttons (hidden when printing) */}
@@ -94,14 +106,12 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
             >
               <Printer className="w-3.5 h-3.5" /> Print / Save as PDF
             </button>
-            <a
-              href={`/api/orders/${order.id}/invoice`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={handleDownloadPDF}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-full text-xs font-bold transition shadow-sm border border-neutral-200"
             >
               <Download className="w-3.5 h-3.5" /> Official PDF
-            </a>
+            </button>
           </div>
         </div>
       )}

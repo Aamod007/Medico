@@ -51,7 +51,7 @@ function currency(amount: number): string {
 }
 
 export class InvoiceService {
-  static generateGSTInvoicePDF(data: InvoiceData, res: Response): void {
+  static generateGSTInvoicePDF(data: InvoiceData, res: Response, disposition: "inline" | "attachment" = "attachment"): void {
     try {
       const doc = new PDFDocument({
         margin: 50,
@@ -67,7 +67,7 @@ export class InvoiceService {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=Invoice_${data.orderNumber}.pdf`
+        `${disposition}; filename=Invoice_${data.orderNumber}.pdf`
       );
 
       doc.pipe(res);

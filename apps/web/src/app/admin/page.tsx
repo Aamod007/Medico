@@ -119,24 +119,24 @@ export default function AdminDashboardPage() {
           <p className="text-xs text-gray-500 font-medium mt-1">Dispatched & processing</p>
         </div>
 
-        {/* Pending Prescriptions */}
+        {/* Direct Orders */}
         <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Pending Prescriptions
+              Order Fulfillment
             </span>
-            <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center">
-              <FileCheck className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+              <Package className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-amber-600">
-            {stats?.pendingPrescriptionsCount || 0}
+          <div className="text-2xl font-black text-emerald-700">
+            100% Direct
           </div>
           <Link
-            href="/admin/prescriptions"
+            href="/admin/orders"
             className="text-xs text-[#0B4A3A] font-bold hover:underline mt-1 inline-flex items-center gap-1"
           >
-            Review Queue &rarr;
+            Manage Orders &rarr;
           </Link>
         </div>
 

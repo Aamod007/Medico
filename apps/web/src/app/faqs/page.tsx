@@ -14,17 +14,17 @@ interface FAQ {
 const FAQS_DATA: FAQ[] = [
   {
     id: "q1",
-    category: "Prescriptions",
-    question: "Why do I need to upload a prescription?",
+    category: "Ordering & Medicines",
+    question: "Do I need to upload a prescription to buy medicines?",
     answer:
-      "Under Schedule H, H1, and X of the Indian Drugs and Cosmetics Rules, certain potent medicines (like antibiotics, hypertension drugs, and diabetic therapies) require a valid prescription from a registered medical practitioner to prevent misuse and health hazards.",
+      "No prescription upload is required! You can browse and order all healthcare products, wellness essentials, daily medicines, and personal care items directly with doorstep delivery.",
   },
   {
     id: "q2",
-    category: "Prescriptions",
-    question: "What makes a prescription legally valid?",
+    category: "Ordering & Medicines",
+    question: "Are all medicines on Pharmico genuine and authentic?",
     answer:
-      "A valid prescription must feature: 1) Doctor's full name, degree, and state council registration number; 2) Patient's name and age; 3) Date of consultation (valid for up to 6 months); 4) Medicine names, dosage, and duration; 5) Physical or registered digital signature.",
+      "Yes. Every product is sourced directly from licensed Indian pharmaceutical manufacturers (Cipla, Sun Pharma, Abbott, Dr. Reddy's) and stored in temperature-controlled facilities following strict FEFO quality protocols.",
   },
   {
     id: "q3",
@@ -75,7 +75,7 @@ export default function FaqsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({ q1: true });
 
-  const categories = ["ALL", "Prescriptions", "Delivery & Tracking", "Payments & Refunds", "Diagnostics & Doctors"];
+  const categories = ["ALL", "Ordering & Medicines", "Delivery & Tracking", "Payments & Refunds", "Diagnostics & Doctors"];
 
   const toggleAccordion = (id: string) => {
     setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }));

@@ -101,8 +101,8 @@ export default function HomePage() {
       a: "Tap 'Notify Me' on the product page and we'll send you an instant SMS and email alert the moment new stock arrives from our verified distributors. Our inventory is synced daily with licensed pharmaceutical manufacturers including Cipla, Sun Pharma, Abbott, and Dr. Reddy's — so restocks are frequent.",
     },
     {
-      q: "Do I need to upload a prescription for every order?",
-      a: "Only Schedule H, H1, and X drugs (e.g., antibiotics, controlled substances, certain cardiac medications) require a valid doctor's prescription. You can upload a photo or PDF of your prescription directly on Pharmico during checkout. All OTC products, vitamins, supplements, first-aid, baby care, and wellness items can be ordered freely without any Rx.",
+      q: "Do I need to upload a prescription to buy medicines?",
+      a: "No prescription upload is required! You can browse and order all healthcare products, wellness essentials, daily medicines, and personal care items directly with instant home delivery.",
     },
     {
       q: "Can I consult a doctor directly through Pharmico?",
@@ -779,7 +779,7 @@ export default function HomePage() {
                 <h3 className="text-lg font-bold text-[#0F2A22]">Browse & Add to Cart</h3>
               </div>
               <p className="text-xs sm:text-sm text-[#5B6B65] leading-relaxed">
-                Search by medicine name, brand, or condition. OTC products go straight to checkout. For prescription medicines (Schedule H/H1/X), upload a clear photo or PDF of your doctor's prescription — we accept JPG, PNG, and PDF formats.
+                Search by medicine name, brand, or health condition. Add all your required medicines, vitamins, and healthcare essentials straight to your cart with instant transparent pricing.
               </p>
             </div>
           </div>
@@ -789,7 +789,7 @@ export default function HomePage() {
             <div className="h-52 sm:h-56 xl:h-64 rounded-2xl overflow-hidden bg-gray-100">
               <img
                 src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=600&auto=format&fit=crop&q=80"
-                alt="Pharmacist verifies your order"
+                alt="Quality inspection and packing"
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
               />
             </div>
@@ -798,10 +798,10 @@ export default function HomePage() {
                 <span className="w-7 h-7 rounded-full bg-[#0B4A3A] text-white text-xs font-bold inline-flex items-center justify-center flex-shrink-0">
                   2
                 </span>
-                <h3 className="text-lg font-bold text-[#0F2A22]">Pharmacist Verification</h3>
+                <h3 className="text-lg font-bold text-[#0F2A22]">Genuine Quality Check</h3>
               </div>
               <p className="text-xs sm:text-sm text-[#5B6B65] leading-relaxed">
-                A Pharmico-licensed pharmacist reviews your order — checking batch numbers, expiry dates (FEFO protocol), and prescription validity. If anything needs clarification, we call you directly before dispatching. Your order is only confirmed once verified.
+                Every order is carefully inspected, packed, and sealed following strict FEFO (First Expiry First Out) protocols to ensure 100% genuine and safe pharmaceuticals.
               </p>
             </div>
           </div>
@@ -835,7 +835,7 @@ export default function HomePage() {
         <div className="text-center mb-10">
           <h2 className="text-3xl sm:text-4xl font-black text-[#0F2A22]">Frequently Asked Questions</h2>
           <p className="text-xs sm:text-sm text-[#5B6B65] mt-1">
-            Everything you need to know about ordering on Pharmico — delivery, prescriptions, consultations, and more.
+            Everything you need to know about ordering on Pharmico — delivery, payments, products, and more.
           </p>
         </div>
 

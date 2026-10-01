@@ -199,18 +199,7 @@ export default function CartDrawer() {
             </div>
           </div>
 
-          {/* Prescription Required Alert Banner */}
-          {hasPrescriptionItems && (
-            <div className="bg-amber-50 border-l-4 border-amber-500 p-3 mx-4 mt-3 rounded-r-xl flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-900 leading-relaxed">
-                <strong>Prescription Required</strong>
-                <p className="mt-0.5 text-[11px]">
-                  Contains Schedule H items. You can attach a prescription at checkout.
-                </p>
-              </div>
-            </div>
-          )}
+
 
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
@@ -264,11 +253,6 @@ export default function CartDrawer() {
                         </h3>
                         <p className="text-[11px] text-[#5B6B65] mt-0.5 font-medium">{item.packSize}</p>
 
-                        {item.prescriptionRequired && (
-                          <span className="inline-block px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded mt-1">
-                            Rx Required
-                          </span>
-                        )}
 
                         <div className="flex items-center justify-between mt-2.5">
                           <div className="flex items-baseline gap-1.5">

@@ -9,7 +9,6 @@ import {
   Banknote,
   CheckCircle2,
   AlertCircle,
-  UploadCloud,
   Tag,
   ArrowRight,
   ShieldCheck,
@@ -25,12 +24,10 @@ declare global {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, deliveryFee, totalAmount, hasPrescriptionItems, clearCart } = useCartStore();
+  const { items, subtotal, deliveryFee, totalAmount, clearCart } = useCartStore();
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
-  const [prescriptions, setPrescriptions] = useState<any[]>([]);
-  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
   const [couponCode, setCouponCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
@@ -70,10 +67,7 @@ export default function CheckoutPage() {
     document.body.appendChild(script);
 
     async function loadUserData() {
-      const [addrRes, rxRes] = await Promise.all([
-        api.get("/users/addresses"),
-        api.get("/prescriptions/my"),
-      ]);
+      const addrRes = await api.get("/users/addresses");
 
       if (addrRes.success && addrRes.data && addrRes.data.length > 0) {
         setAddresses(addrRes.data);
@@ -81,13 +75,6 @@ export default function CheckoutPage() {
         setSelectedAddressId(def.id);
       } else {
         setShowAddressForm(true);
-      }
-
-      if (rxRes.success && rxRes.data) {
-        setPrescriptions(rxRes.data);
-        if (rxRes.data.length > 0) {
-          setSelectedPrescriptionId(rxRes.data[0].id);
-        }
       }
     }
 
@@ -127,11 +114,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (hasPrescriptionItems && !selectedPrescriptionId) {
-      alert("This order contains Rx medicines. Please attach a prescription to continue.");
-      return;
-    }
-
     setIsProcessing(true);
 
     try {
@@ -139,7 +121,6 @@ export default function CheckoutPage() {
       const orderRes = await api.post("/orders", {
         addressId: selectedAddressId,
         paymentMethod,
-        prescriptionId: selectedPrescriptionId || undefined,
         couponCode: couponCode || undefined,
       });
 
@@ -378,48 +359,11 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* 2. Prescription Attachment (if required) */}
-          {hasPrescriptionItems && (
-            <div className="bg-white rounded-3xl border border-[#D7DEDB] p-6 space-y-4">
-              <h3 className="text-base font-bold text-[#0F2A22] flex items-center gap-2">
-                <UploadCloud className="w-5 h-5 text-amber-600" />
-                2. Doctor Prescription (Required)
-              </h3>
-
-              {prescriptions.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-xs text-[#5B6B65]">Select from your saved prescriptions:</p>
-                  <select
-                    value={selectedPrescriptionId}
-                    onChange={(e) => setSelectedPrescriptionId(e.target.value)}
-                    className="w-full bg-[#F4F6F5] border border-[#D7DEDB] rounded-full px-4 py-2 text-xs font-medium focus:outline-none"
-                  >
-                    {prescriptions.map((rx) => (
-                      <option key={rx.id} value={rx.id}>
-                        {rx.originalName} ({new Date(rx.createdAt).toLocaleDateString()}) - {rx.status}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
-                  <p>You have no saved prescriptions. Please upload your doctor prescription before proceeding.</p>
-                  <Link
-                    href="/prescription/upload"
-                    className="inline-block px-4 py-1.5 rounded-full bg-amber-600 text-white font-bold"
-                  >
-                    Upload Prescription Now
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 3. Payment Method */}
+          {/* 2. Payment Method */}
           <div className="bg-white rounded-3xl border border-[#D7DEDB] p-6 space-y-4">
             <h3 className="text-base font-bold text-[#0F2A22] flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-[#0B4A3A]" />
-              3. Payment Method
+              2. Payment Method
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

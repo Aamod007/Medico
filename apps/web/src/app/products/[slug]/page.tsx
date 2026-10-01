@@ -134,16 +134,11 @@ export default function ProductDetailPage() {
 
         {/* Right: Product Details & Purchase Form */}
         <div className="lg:col-span-7 space-y-5">
-          {/* Brand & Rx Badge */}
+          {/* Brand */}
           <div className="flex items-center gap-3">
             <span className="text-xs font-extrabold uppercase tracking-wider text-[#10B981]">
               {product.brand?.name}
             </span>
-            {product.prescriptionRequired && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
-                <Pill className="w-3 h-3" /> Rx Required (Schedule H)
-              </span>
-            )}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-[#0F2A22]">

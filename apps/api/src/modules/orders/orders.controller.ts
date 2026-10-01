@@ -48,15 +48,8 @@ export async function createOrder(
     return;
   }
 
-  // 3. Check Pharmacy Compliance (Prescription requirement)
-  const rxRequired = cart.items.some((i) => i.variant.product.prescriptionRequired);
-  if (rxRequired && !prescriptionId) {
-    res.status(400).json({
-      success: false,
-      message: "One or more medicines in your cart require a doctor prescription. Please upload or attach a prescription.",
-    });
-    return;
-  }
+  // 3. Optional prescription attachment (non-blocking)
+
 
   if (prescriptionId) {
     const rx = await prisma.prescription.findFirst({
@@ -171,7 +164,7 @@ export async function createOrder(
         statusHistory: {
           create: {
             status: "PLACED",
-            note: rxRequired ? "Order placed. Awaiting pharmacist review of prescription." : "Order placed successfully.",
+            note: "Order placed successfully.",
             changedByUserId: userId,
           },
         },

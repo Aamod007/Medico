@@ -9,12 +9,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Pharmico - Online Pharmacy & Healthcare Platform",
   description:
-    "Order genuine prescription medicines, vitamins, OTC wellness products, and book lab tests with doorstep delivery in 24-48 hours.",
+    "Order genuine medicines, vitamins, health supplements, OTC wellness products, and book lab tests with doorstep delivery in 24-48 hours.",
   keywords: [
     "online pharmacy",
     "buy medicines online",
-    "prescription medicines",
     "health supplements",
+    "vitamins",
     "lab tests online",
   ],
 };

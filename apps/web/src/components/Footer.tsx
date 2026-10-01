@@ -78,7 +78,6 @@ export default function Footer() {
               <li><Link href="/products" className="hover:text-white transition">All Medicines</Link></li>
               <li><Link href="/lab-tests" className="hover:text-white transition">Book Lab Tests</Link></li>
               <li><Link href="/consultations" className="hover:text-white transition">Online Doctor Consult</Link></li>
-              <li><Link href="/prescription/upload" className="hover:text-white transition">Upload Prescription</Link></li>
               <li><Link href="/about" className="hover:text-white transition">About Pharmico</Link></li>
             </ul>
           </div>

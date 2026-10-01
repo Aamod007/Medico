@@ -59,7 +59,6 @@ function ProductListingContent() {
   const currentSort = searchParams.get("sort") || "featured";
   const currentMinPrice = searchParams.get("minPrice") || "";
   const currentMaxPrice = searchParams.get("maxPrice") || "";
-  const currentRxOnly = searchParams.get("prescriptionRequired") === "true";
 
   // Client-side sort helper — applied after API fetch as a reliable fallback
   const applySortToProducts = (prods: any[], sort: string) => {
@@ -257,20 +256,6 @@ function ProductListingContent() {
               ))}
             </div>
           </div>
-
-          {/* Prescription Required Toggle */}
-          <div className="bg-white p-5 rounded-2xl border border-[#D7DEDB]">
-            <h3 className="font-bold text-sm text-[#0F2A22] mb-3">Prescription</h3>
-            <label className="flex items-center gap-2.5 text-xs text-[#0F2A22] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={currentRxOnly}
-                onChange={(e) => updateFilter("prescriptionRequired", e.target.checked ? "true" : null)}
-                className="w-4 h-4 rounded text-[#0B4A3A] focus:ring-0 cursor-pointer"
-              />
-              <span>Prescription Required Only</span>
-            </label>
-          </div>
         </aside>
 
         {/* Product Grid / List */}
@@ -305,17 +290,13 @@ function ProductListingContent() {
                     <div>
                       {/* Badges */}
                       <div className="flex items-center justify-between mb-2">
-                        {p.prescriptionRequired ? (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold">
-                            Rx Required
-                          </span>
-                        ) : p.isBestSeller ? (
+                        {p.isBestSeller ? (
                           <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
-                            -25%
+                            Best Seller
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full bg-[#E6F4B8] text-[#0B4A3A] text-[10px] font-bold">
-                            New!
+                            Verified
                           </span>
                         )}
                         <button

@@ -49,11 +49,10 @@ export default function WishlistPage() {
 
       setIsLoading(true);
       try {
-        // Fetch full catalog and filter client-side to wishlisted IDs
-        const res = await api.get("/catalog/products?limit=200");
+        const query = `?ids=${encodeURIComponent(ids.join(","))}`;
+        const res = await api.get(`/wishlist${query}`);
         if (res.success && Array.isArray(res.data)) {
-          const wishlisted = res.data.filter((p: any) => ids.includes(p.id));
-          setProducts(wishlisted);
+          setProducts(res.data);
         } else {
           setProducts([]);
         }

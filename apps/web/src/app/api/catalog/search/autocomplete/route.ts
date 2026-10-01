@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -15,43 +14,30 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const trimmed = query.trim();
+    const trimmed = encodeURIComponent(query.trim());
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
+    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+    const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
+
+    const [prodRes, catRes, brandRes] = await Promise.all([
+      fetch(
+        `${supabaseUrl}/rest/v1/Product?or=(name.ilike.*${trimmed}*,composition.ilike.*${trimmed}*)&isActive=eq.true&deletedAt=is.null&select=id,name,slug,images,composition,prescriptionRequired,variants:ProductVariant(price,mrp)&limit=6`,
+        { headers, cache: "no-store" }
+      ),
+      fetch(
+        `${supabaseUrl}/rest/v1/Category?name=ilike.*${trimmed}*&isActive=eq.true&select=id,name,slug,image&limit=3`,
+        { headers, cache: "no-store" }
+      ),
+      fetch(
+        `${supabaseUrl}/rest/v1/Brand?name=ilike.*${trimmed}*&isActive=eq.true&select=id,name,slug,logo&limit=3`,
+        { headers, cache: "no-store" }
+      ),
+    ]);
 
     const [products, categories, brands] = await Promise.all([
-      prisma.product.findMany({
-        where: {
-          OR: [
-            { name: { contains: trimmed, mode: "insensitive" } },
-            { composition: { contains: trimmed, mode: "insensitive" } },
-          ],
-          isActive: true,
-          deletedAt: null,
-        },
-        take: 6,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          images: true,
-          composition: true,
-          prescriptionRequired: true,
-          variants: {
-            where: { isDefault: true },
-            select: { price: true, mrp: true },
-            take: 1,
-          },
-        },
-      }),
-      prisma.category.findMany({
-        where: { name: { contains: trimmed, mode: "insensitive" }, isActive: true },
-        take: 3,
-        select: { id: true, name: true, slug: true, image: true },
-      }),
-      prisma.brand.findMany({
-        where: { name: { contains: trimmed, mode: "insensitive" }, isActive: true },
-        take: 3,
-        select: { id: true, name: true, slug: true, logo: true },
-      }),
+      prodRes.ok ? prodRes.json() : [],
+      catRes.ok ? catRes.json() : [],
+      brandRes.ok ? brandRes.json() : [],
     ]);
 
     return NextResponse.json({

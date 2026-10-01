@@ -21,3 +21,5 @@ uploads
 logs
 *.log
 .gstack/
+.vercel
+.env*.local

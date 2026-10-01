@@ -1,0 +1,70 @@
+# ==========================================
+# Render Blueprint Configuration (render.yaml)
+# Docs: https://render.com/docs/blueprint-spec
+# ==========================================
+
+services:
+  # ----------------------------------------
+  # 1. Medico Express API Server
+  # ----------------------------------------
+  - type: web
+    name: medico-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build --workspace=packages/shared && npm run db:generate && npm run build --workspace=apps/api
+    startCommand: node apps/api/dist/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false # User supplies their Supabase connection string
+      - key: DIRECT_URL
+        sync: false # User supplies their Supabase session pooler connection string
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false # Set to your frontend URL (e.g. https://medico-web.onrender.com or your Vercel URL)
+      - key: FRONTEND_URL
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: local
+
+  # ----------------------------------------
+  # 2. Medico Next.js Web Storefront
+  # ----------------------------------------
+  - type: web
+    name: medico-web
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build --workspace=packages/shared && npm run build --workspace=apps/web
+    startCommand: npm run start --workspace=apps/web
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        sync: false # Set to https://medico-api.onrender.com/api
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_RAZORPAY_KEY_ID
+        sync: false

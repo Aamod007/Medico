@@ -1,6 +1,5 @@
 import { Response } from "express";
 
-// Use require for pdfkit (CommonJS module)
 const PDFDocument = require("pdfkit");
 
 interface InvoiceData {
@@ -28,15 +27,42 @@ interface InvoiceData {
   paymentStatus: string;
 }
 
-// Format currency without ₹ symbol (Helvetica doesn't support it)
+// Colors matching the InvoiceCard design
+const C = {
+  black: "#0A0A0A",
+  dark: "#171717",
+  body: "#404040",
+  muted: "#737373",
+  light: "#A3A3A3",
+  border: "#E5E5E5",
+  bgLight: "#FAFAFA",
+  white: "#FFFFFF",
+  green: "#10B981",
+  greenDark: "#0B4A3A",
+};
+
 function currency(amount: number): string {
-  return `Rs. ${amount.toFixed(2)}`;
+  // Format Indian Rupee style: 1,23,456.00
+  const formatted = Number(amount).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `Rs. ${formatted}`;
 }
 
 export class InvoiceService {
   static generateGSTInvoicePDF(data: InvoiceData, res: Response): void {
     try {
-      const doc = new PDFDocument({ margin: 40, size: "A4" });
+      const doc = new PDFDocument({
+        margin: 50,
+        size: "A4",
+        bufferPages: true,
+        info: {
+          Title: `Invoice ${data.orderNumber}`,
+          Author: "Medico Online Pharmacy",
+          Subject: "Tax Invoice",
+        },
+      });
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
@@ -46,7 +72,6 @@ export class InvoiceService {
 
       doc.pipe(res);
 
-      // Handle stream errors
       doc.on("error", (err: Error) => {
         console.error("PDFKit stream error:", err);
         if (!res.headersSent) {
@@ -54,151 +79,316 @@ export class InvoiceService {
         }
       });
 
-      // --- Header ---
+      const pageWidth = doc.page.width;
+      const marginLeft = 50;
+      const marginRight = 50;
+      const contentWidth = pageWidth - marginLeft - marginRight;
+
+      let y = 50;
+
+      // =====================================================
+      // HEADER: "Invoice" title + Invoice Number
+      // =====================================================
       doc
-        .fillColor("#0B4A3A")
-        .fontSize(22)
         .font("Helvetica-Bold")
-        .text(process.env.STORE_NAME || "Medico Online Pharmacy", 40, 40);
+        .fontSize(28)
+        .fillColor(C.black)
+        .text("Invoice", marginLeft, y);
+
+      y += 36;
 
       doc
-        .fillColor("#5B6B65")
-        .fontSize(9)
         .font("Helvetica")
-        .text("Retail Drug License No: " + (process.env.STORE_DL_NUMBER || "KA-BLR-2024-00129"), 40, 68)
-        .text("GSTIN: " + (process.env.STORE_GSTIN || "29AAAAA0000A1Z5"), 40, 80)
-        .text("Support: " + (process.env.STORE_EMAIL || "support@medico.in"), 40, 92);
-
-      doc
-        .fillColor("#0B4A3A")
-        .fontSize(14)
+        .fontSize(9)
+        .fillColor(C.light)
+        .text("Invoice Number  ", marginLeft, y, { continued: true })
         .font("Helvetica-Bold")
-        .text("TAX INVOICE", 400, 40, { align: "right" });
+        .fillColor(C.dark)
+        .text(`#${data.orderNumber}`);
 
+      y += 40;
+
+      // =====================================================
+      // THIN SEPARATOR
+      // =====================================================
       doc
-        .fillColor("#0F2A22")
-        .fontSize(9)
+        .moveTo(marginLeft, y)
+        .lineTo(pageWidth - marginRight, y)
+        .strokeColor(C.border)
+        .lineWidth(0.5)
+        .stroke();
+
+      y += 24;
+
+      // =====================================================
+      // TWO-COLUMN: Billed by / Billed to
+      // =====================================================
+      const colWidth = contentWidth / 2;
+      const leftColX = marginLeft;
+      const rightColX = marginLeft + colWidth + 10;
+
+      // --- Left Column: Billed by ---
+      const leftStartY = y;
+      doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Billed by:", leftColX, y);
+      y += 14;
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(C.dark).text("Medico", leftColX, y);
+      y += 14;
+      doc.font("Helvetica").fontSize(8).fillColor(C.muted).text("hello@medico.in", leftColX, y);
+      y += 14;
+      doc
         .font("Helvetica")
-        .text(`Invoice No: ${data.orderNumber}`, 400, 65, { align: "right" })
-        .text(`Date: ${new Date(data.orderDate).toLocaleDateString("en-IN")}`, 400, 78, { align: "right" })
-        .text(`Payment: ${data.paymentMethod} (${data.paymentStatus})`, 400, 91, { align: "right" });
-
-      doc.moveTo(40, 115).lineTo(555, 115).strokeColor("#D7DEDB").lineWidth(1).stroke();
-
-      // --- Bill To / Ship To ---
-      doc
-        .fillColor("#0B4A3A")
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("BILL TO / DELIVER TO:", 40, 130);
-
-      doc
-        .fillColor("#0F2A22")
-        .fontSize(9)
-        .font("Helvetica")
-        .text(data.customerName, 40, 145)
-        .text(`Phone: ${data.customerPhone}`, 40, 157)
-        .text(data.customerAddress, 40, 169, { width: 300 });
-
-      // --- Items Table Header ---
-      const tableTop = 220;
-      doc
-        .rect(40, tableTop - 5, 515, 22)
-        .fillColor("#FAF3EA")
-        .fill();
-
-      doc
-        .fillColor("#0F2A22")
         .fontSize(8)
-        .font("Helvetica-Bold")
-        .text("ITEM / FORMULATION", 50, tableTop)
-        .text("PACK", 230, tableTop)
-        .text("QTY", 310, tableTop)
-        .text("MRP", 350, tableTop)
-        .text("RATE", 410, tableTop)
-        .text("GST%", 470, tableTop)
-        .text("TOTAL", 510, tableTop, { align: "right" });
+        .fillColor(C.muted)
+        .text("8526 Daisy Drive, Bellandur,", leftColX, y);
+      y += 11;
+      doc.text("Bangalore, Karnataka, India. 560103", leftColX, y);
+      y += 20;
 
-      let currentY = tableTop + 24;
+      doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Date Issued:", leftColX, y);
+      y += 13;
+      const formattedDate = new Date(data.orderDate).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(formattedDate, leftColX, y);
 
-      doc.font("Helvetica").fontSize(8);
-      data.items.forEach((item) => {
+      // --- Right Column: Billed to ---
+      let ry = leftStartY;
+      doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Billed to:", rightColX, ry);
+      ry += 14;
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(C.dark).text(data.customerName, rightColX, ry);
+      ry += 14;
+      doc.font("Helvetica").fontSize(8).fillColor(C.muted).text(`+91 ${data.customerPhone}`, rightColX, ry);
+      ry += 14;
+      doc
+        .font("Helvetica")
+        .fontSize(8)
+        .fillColor(C.muted)
+        .text(data.customerAddress, rightColX, ry, { width: colWidth - 20 });
+      ry += 30;
+
+      doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Payment Status:", rightColX, ry);
+      ry += 13;
+
+      // Payment status with green dot
+      const paymentLabel =
+        data.paymentStatus === "PAID" || data.paymentMethod === "RAZORPAY"
+          ? `Paid via ${data.paymentMethod}`
+          : data.paymentMethod === "COD"
+          ? "Cash on Delivery"
+          : `${data.paymentMethod} (${data.paymentStatus})`;
+
+      // Draw green dot
+      doc.circle(rightColX + 4, ry + 4, 3).fillColor(C.green).fill();
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(paymentLabel, rightColX + 12, ry);
+
+      // Move Y below both columns
+      y = Math.max(y, ry) + 36;
+
+      // =====================================================
+      // THIN SEPARATOR
+      // =====================================================
+      doc
+        .moveTo(marginLeft, y)
+        .lineTo(pageWidth - marginRight, y)
+        .strokeColor(C.border)
+        .lineWidth(0.5)
+        .stroke();
+
+      y += 20;
+
+      // =====================================================
+      // ITEMS TABLE — Clean, minimal design
+      // =====================================================
+      // Column positions
+      const itemsColX = marginLeft;
+      const qtyColX = marginLeft + contentWidth * 0.55;
+      const rateColX = marginLeft + contentWidth * 0.70;
+      const totalColX = pageWidth - marginRight;
+
+      // Table header
+      doc.font("Helvetica").fontSize(8).fillColor(C.light);
+      doc.text("Items", itemsColX, y);
+      doc.text("QTY", qtyColX, y, { width: 40, align: "center" });
+      doc.text("Rate", rateColX, y, { width: 60, align: "right" });
+      doc.text("Total", totalColX - 60, y, { width: 60, align: "right" });
+
+      y += 16;
+
+      // Thin line below header
+      doc
+        .moveTo(marginLeft, y)
+        .lineTo(pageWidth - marginRight, y)
+        .strokeColor(C.border)
+        .lineWidth(0.3)
+        .stroke();
+
+      y += 8;
+
+      // Table rows
+      data.items.forEach((item, index) => {
+        // Row separator (except first)
+        if (index > 0) {
+          doc
+            .moveTo(marginLeft, y - 4)
+            .lineTo(pageWidth - marginRight, y - 4)
+            .strokeColor("#F5F5F5")
+            .lineWidth(0.3)
+            .stroke();
+        }
+
+        // Product name
         doc
-          .fillColor("#0F2A22")
-          .text(item.productName, 50, currentY, { width: 170 })
-          .text(item.packSize, 230, currentY)
-          .text(item.quantity.toString(), 310, currentY)
-          .text(currency(item.mrp), 350, currentY)
-          .text(currency(item.price), 410, currentY)
-          .text(`${item.gstRate}%`, 470, currentY)
-          .text(currency(item.subtotal), 40, currentY, { align: "right" });
+          .font("Helvetica-Bold")
+          .fontSize(9)
+          .fillColor(C.dark)
+          .text(item.productName, itemsColX, y, { width: contentWidth * 0.50 });
 
-        currentY += 20;
+        // Pack size (subtitle)
+        if (item.packSize) {
+          doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor(C.light)
+            .text(item.packSize, itemsColX, y + 13);
+        }
+
+        // QTY
+        doc
+          .font("Helvetica")
+          .fontSize(9)
+          .fillColor(C.body)
+          .text(item.quantity.toString(), qtyColX, y, { width: 40, align: "center" });
+
+        // Rate
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(9)
+          .fillColor(C.dark)
+          .text(currency(item.price), rateColX, y, { width: 60, align: "right" });
+
+        // Total
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(9)
+          .fillColor(C.dark)
+          .text(currency(item.subtotal), totalColX - 60, y, { width: 60, align: "right" });
+
+        y += item.packSize ? 30 : 22;
       });
 
-      doc.moveTo(40, currentY + 5).lineTo(555, currentY + 5).strokeColor("#D7DEDB").stroke();
-      currentY += 15;
+      y += 12;
 
-      // --- Totals ---
+      // =====================================================
+      // FINANCIAL SUMMARY — right-aligned block
+      // =====================================================
+      const summaryWidth = 200;
+      const summaryX = pageWidth - marginRight - summaryWidth;
+      const labelX = summaryX;
+      const valueX = summaryX + summaryWidth - 80;
+      const valueW = 80;
+
+      // Subtotal
+      doc.font("Helvetica").fontSize(9).fillColor(C.muted).text("Subtotal", labelX, y);
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(currency(data.subtotal), valueX, y, { width: valueW, align: "right" });
+      y += 16;
+
+      // Tax (GST)
       const cgst = data.gstAmount / 2;
       const sgst = data.gstAmount / 2;
+      doc.font("Helvetica").fontSize(9).fillColor(C.muted).text("CGST", labelX, y);
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(currency(cgst), valueX, y, { width: valueW, align: "right" });
+      y += 16;
 
-      doc
-        .fontSize(9)
-        .font("Helvetica")
-        .text("Subtotal:", 350, currentY)
-        .text(currency(data.subtotal), 40, currentY, { align: "right" });
-      currentY += 14;
+      doc.font("Helvetica").fontSize(9).fillColor(C.muted).text("SGST", labelX, y);
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(currency(sgst), valueX, y, { width: valueW, align: "right" });
+      y += 16;
 
+      // Discount (if any)
       if (data.discount > 0) {
-        doc
-          .text("Discount:", 350, currentY)
-          .text(`-${currency(data.discount)}`, 40, currentY, { align: "right" });
-        currentY += 14;
+        doc.font("Helvetica").fontSize(9).fillColor("#059669").text("Discount", labelX, y);
+        doc.font("Helvetica-Bold").fontSize(9).fillColor("#059669").text(`-${currency(data.discount)}`, valueX, y, { width: valueW, align: "right" });
+        y += 16;
       }
 
-      doc
-        .text("CGST (6%):", 350, currentY)
-        .text(currency(cgst), 40, currentY, { align: "right" });
-      currentY += 14;
+      // Delivery
+      if (data.deliveryFee > 0) {
+        doc.font("Helvetica").fontSize(9).fillColor(C.muted).text("Delivery", labelX, y);
+        doc.font("Helvetica-Bold").fontSize(9).fillColor(C.dark).text(currency(data.deliveryFee), valueX, y, { width: valueW, align: "right" });
+        y += 16;
+      }
 
-      doc
-        .text("SGST (6%):", 350, currentY)
-        .text(currency(sgst), 40, currentY, { align: "right" });
-      currentY += 14;
+      y += 4;
 
+      // Separator before total
       doc
-        .text("Delivery Fee:", 350, currentY)
-        .text(currency(data.deliveryFee), 40, currentY, { align: "right" });
-      currentY += 18;
+        .moveTo(labelX, y)
+        .lineTo(labelX + summaryWidth, y)
+        .strokeColor(C.border)
+        .lineWidth(0.5)
+        .stroke();
 
+      y += 12;
+
+      // TOTAL — larger, bolder
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(C.dark).text("Total", labelX, y);
+      doc.font("Helvetica-Bold").fontSize(16).fillColor(C.black).text(currency(data.totalAmount), valueX - 20, y - 2, { width: valueW + 20, align: "right" });
+
+      y += 40;
+
+      // =====================================================
+      // NOTES BOX — light background rounded rectangle
+      // =====================================================
+      const notesBoxX = marginLeft;
+      const notesBoxWidth = contentWidth;
+      const notesBoxHeight = 60;
+
+      // Background rectangle
       doc
-        .rect(340, currentY - 4, 215, 24)
-        .fillColor("#0B4A3A")
+        .roundedRect(notesBoxX, y, notesBoxWidth, notesBoxHeight, 8)
+        .fillColor(C.bgLight)
         .fill();
 
+      // Border
       doc
-        .fillColor("#FFFFFF")
-        .font("Helvetica-Bold")
-        .fontSize(10)
-        .text("Total Paid:", 350, currentY + 2)
-        .text(currency(data.totalAmount), 40, currentY + 2, { align: "right" });
+        .roundedRect(notesBoxX, y, notesBoxWidth, notesBoxHeight, 8)
+        .strokeColor(C.border)
+        .lineWidth(0.5)
+        .stroke();
 
-      // --- Footer & Disclaimer ---
+      // Notes label
       doc
-        .fillColor("#5B6B65")
-        .fontSize(7)
+        .font("Helvetica-Bold")
+        .fontSize(8)
+        .fillColor(C.body)
+        .text("Notes:", notesBoxX + 16, y + 12);
+
+      // Notes body
+      doc
         .font("Helvetica")
+        .fontSize(7.5)
+        .fillColor(C.muted)
         .text(
-          "Medicines dispensed by registered pharmacist against valid prescription where applicable. Keep medicines out of reach of children. Store in a cool dry place.",
-          40,
-          760,
-          { align: "center", width: 515 }
-        )
-        .text("This is a computer-generated tax invoice. No signature required.", 40, 775, {
-          align: "center",
-          width: 515,
-        });
+          "Thank you for your business. For any questions regarding this invoice or your medicine delivery, please reach out to hello@medico.in. All products are verified and dispensed by licensed pharmacists.",
+          notesBoxX + 16,
+          y + 24,
+          { width: notesBoxWidth - 32, lineGap: 2 }
+        );
+
+      // =====================================================
+      // FOOTER — subtle, at bottom
+      // =====================================================
+      doc
+        .font("Helvetica")
+        .fontSize(6.5)
+        .fillColor(C.light)
+        .text(
+          "This is a computer-generated tax invoice. No signature required.",
+          marginLeft,
+          doc.page.height - 40,
+          { align: "center", width: contentWidth }
+        );
 
       doc.end();
     } catch (err) {

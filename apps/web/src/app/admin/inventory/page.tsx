@@ -48,7 +48,7 @@ export default function AdminInventoryPage() {
       if (searchQuery) params.append("search", searchQuery);
       if (lowStockOnly) params.append("lowStockOnly", "true");
 
-      const res = await fetch(`http://localhost:5000/api/admin/inventory?${params.toString()}`);
+      const res = await fetch(`/api/admin/inventory?${params.toString()}`);
       const data = await res.json();
       if (data.success && data.data) {
         setBatches(data.data);

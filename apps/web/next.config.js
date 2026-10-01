@@ -3,9 +3,6 @@ const nextConfig = {
   // Enable transpilation of the shared workspace package
   transpilePackages: ["@medico/shared"],
 
-  // Optimize for Vercel deployment
-  output: "standalone",
-
   images: {
     remotePatterns: [
       {

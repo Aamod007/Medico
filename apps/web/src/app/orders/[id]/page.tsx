@@ -101,7 +101,7 @@ export default function OrderDetailPage() {
 
         {/* Invoice Download Button */}
         <a
-          href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/orders/${order.id}/invoice`}
+          href={`/api/orders/${order.id}/invoice`}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition shadow-sm"

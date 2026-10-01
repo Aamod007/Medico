@@ -49,8 +49,8 @@ export default function AdminPrescriptionsPage() {
       setLoading(true);
       const url =
         statusFilter === "ALL"
-          ? "http://localhost:5000/api/admin/prescriptions"
-          : `http://localhost:5000/api/admin/prescriptions?status=${statusFilter}`;
+          ? "/api/admin/prescriptions"
+          : `/api/admin/prescriptions?status=${statusFilter}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success && data.data) {
@@ -74,7 +74,7 @@ export default function AdminPrescriptionsPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/admin/prescriptions/${selectedRx.id}/review`,
+        `/api/admin/prescriptions/${selectedRx.id}/review`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -184,7 +184,7 @@ export default function AdminPrescriptionsPage() {
                         href={
                           rx.fileUrl.startsWith("http")
                             ? rx.fileUrl
-                            : `http://localhost:5000/${rx.fileUrl}`
+                            : rx.fileUrl
                         }
                         target="_blank"
                         rel="noopener noreferrer"
@@ -274,7 +274,7 @@ export default function AdminPrescriptionsPage() {
                   href={
                     selectedRx.fileUrl.startsWith("http")
                       ? selectedRx.fileUrl
-                      : `http://localhost:5000/${selectedRx.fileUrl}`
+                      : selectedRx.fileUrl
                   }
                   target="_blank"
                   rel="noopener noreferrer"

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": "apps/api",
+      "framework": "express",
+      "buildCommand": "npx prisma generate && tsc",
+      "installCommand": "cd ../.. && npm install && npm run build --workspace=@medico/shared"
+    },
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && npm install && npm run build --workspace=@medico/shared",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "api",
+          "format": "url",
+          "env": "API_SERVICE_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/location/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
+  ]
+}

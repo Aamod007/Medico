@@ -184,7 +184,7 @@ export const getAllPrescriptions = async (req: Request, res: Response, next: Nex
       orderBy: { createdAt: "desc" },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        order: { select: { id: true, orderNumber: true, totalAmount: true } },
+        orders: { select: { id: true, orderNumber: true, totalAmount: true } },
       },
     });
 
@@ -210,8 +210,8 @@ export const reviewPrescription = async (req: any, res: Response, next: NextFunc
         status,
         rejectionReason: status === "REJECTED" ? rejectionReason : null,
         notes,
-        verifiedAt: new Date(),
-        verifiedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewedByPharmacistId: reviewerId,
       },
       include: { user: true },
     });

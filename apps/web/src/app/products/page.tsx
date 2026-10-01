@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 
-export default function ProductListingPage() {
+function ProductListingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { addItem } = useCartStore();
@@ -386,5 +386,22 @@ export default function ProductListingPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ProductListingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FBFBF9] py-16 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 border-[#0F2A22] border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-gray-600">Loading catalog...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProductListingContent />
+    </Suspense>
   );
 }

@@ -55,7 +55,7 @@ export default function ConsultationsPage() {
   useEffect(() => {
     async function fetchDoctors() {
       try {
-        const res = await fetch("http://localhost:5000/api/consultations/doctors");
+        const res = await fetch("/api/consultations/doctors");
         const data = await res.json();
         if (data.success && data.data) {
           setDoctors(data.data.doctors || []);
@@ -88,7 +88,7 @@ export default function ConsultationsPage() {
     setBookingError(null);
 
     try {
-      const res = await fetch("http://localhost:5000/api/consultations/book", {
+      const res = await fetch("/api/consultations/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

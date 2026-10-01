@@ -92,7 +92,7 @@ export const bookLabTest = async (req: any, res: Response, next: NextFunction) =
             userId,
             fullName: patientName || "Patient",
             phone: "9876543210",
-            street: "123 Health Ave, Diagnostic Wing",
+            addressLine1: "123 Health Ave, Diagnostic Wing",
             city: "Mumbai",
             state: "Maharashtra",
             pincode: "400001",

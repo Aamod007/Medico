@@ -50,7 +50,7 @@ export default function LabTestsPage() {
   useEffect(() => {
     async function fetchLabTests() {
       try {
-        const res = await fetch("http://localhost:5000/api/labs");
+        const res = await fetch("/api/labs");
         const data = await res.json();
         if (data.success && data.data) {
           setTests(data.data.tests || []);
@@ -82,7 +82,7 @@ export default function LabTestsPage() {
     setBookingError(null);
 
     try {
-      const res = await fetch("http://localhost:5000/api/labs/book", {
+      const res = await fetch("/api/labs/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

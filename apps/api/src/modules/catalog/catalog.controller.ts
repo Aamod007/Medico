@@ -29,7 +29,7 @@ export async function getBrands(_req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: brands });
 }
 
-export async function getProducts(req: Request<{}, {}, {}, ProductQueryInput>, res: Response): Promise<void> {
+export async function getProducts(req: Request, res: Response): Promise<void> {
   const {
     category,
     brand,
@@ -41,7 +41,7 @@ export async function getProducts(req: Request<{}, {}, {}, ProductQueryInput>, r
     sort,
     page = 1,
     limit = 20,
-  } = req.query;
+  } = (req.query as unknown) as ProductQueryInput;
 
   const where: Prisma.ProductWhereInput = {
     isActive: true,

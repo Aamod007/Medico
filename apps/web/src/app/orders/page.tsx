@@ -46,7 +46,7 @@ export default function OrdersHistoryPage() {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const res = await fetch("http://localhost:5000/api/orders");
+        const res = await fetch("/api/orders");
         const data = await res.json();
         if (data.success && data.data) {
           const list = Array.isArray(data.data) ? data.data : (data.data.orders || []);
@@ -163,7 +163,7 @@ export default function OrdersHistoryPage() {
                       ₹{Number(order.totalAmount).toLocaleString("en-IN")}
                     </span>
                     <a
-                      href={`http://localhost:5000/api/orders/${order.id}/invoice`}
+                      href={`/api/orders/${order.id}/invoice`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full text-xs transition inline-flex items-center gap-1.5"

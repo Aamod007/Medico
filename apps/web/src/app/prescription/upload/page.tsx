@@ -65,7 +65,7 @@ export default function PrescriptionUploadPage() {
       if (doctorName) formData.append("doctorName", doctorName);
       if (notes) formData.append("notes", notes);
 
-      const res = await fetch("http://localhost:5000/api/prescriptions/upload", {
+      const res = await fetch("/api/prescriptions/upload", {
         method: "POST",
         body: formData,
       });

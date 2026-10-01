@@ -616,7 +616,7 @@ export default function Header() {
               </Show>
               <Show when="signed-in">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/25 flex items-center justify-center overflow-hidden hover:border-white transition">
-                  <UserButton afterSignOutUrl="/" />
+                  <UserButton />
                 </div>
               </Show>
             </div>

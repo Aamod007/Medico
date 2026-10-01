@@ -71,7 +71,7 @@ export default function AdminOrdersPage() {
       if (statusFilter !== "ALL") params.append("status", statusFilter);
       if (searchQuery) params.append("search", searchQuery);
 
-      const res = await fetch(`http://localhost:5000/api/admin/orders?${params.toString()}`);
+      const res = await fetch(`/api/admin/orders?${params.toString()}`);
       const data = await res.json();
       if (data.success && data.data) {
         setOrders(data.data.orders || []);
@@ -100,7 +100,7 @@ export default function AdminOrdersPage() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/admin/orders/${selectedOrder.id}/status`,
+        `/api/admin/orders/${selectedOrder.id}/status`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -237,7 +237,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="py-4 px-6 text-right space-x-2">
                       <a
-                        href={`http://localhost:5000/api/orders/${ord.id}/invoice`}
+                        href={`/api/orders/${ord.id}/invoice`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full font-semibold transition text-xs inline-flex items-center gap-1"
@@ -372,7 +372,7 @@ export default function AdminOrdersPage() {
 
               <div className="pt-4 flex gap-3">
                 <a
-                  href={`http://localhost:5000/api/orders/${selectedOrder.id}/invoice`}
+                  href={`/api/orders/${selectedOrder.id}/invoice`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-3 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-full transition text-xs inline-flex items-center gap-1.5"

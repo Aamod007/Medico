@@ -19,12 +19,23 @@ export async function fetchApi<T = any>(
       credentials: "include",
     });
 
+    // Check if the response is actually JSON
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await res.text();
+      console.error("Non-JSON response received:", text.substring(0, 200));
+      throw new Error(
+        `Server returned non-JSON response (${res.status}). This usually means the API endpoint is not configured correctly.`
+      );
+    }
+
     const json = await res.json();
     if (!res.ok) {
       throw new Error(json.message || `Request failed with status ${res.status}`);
     }
     return json;
   } catch (error: any) {
+    console.error("API fetch error:", error.message);
     return {
       success: false,
       message: error.message || "Network request failed",

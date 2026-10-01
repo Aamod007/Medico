@@ -1,26 +1,10 @@
 import { Request, Response } from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import prisma from "../../lib/prisma";
 import { ReviewPrescriptionInput } from "@medico/shared";
 
-// Configure local upload directory
-const uploadDir = path.join(process.cwd(), "uploads", "prescriptions");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `rx-${uniqueSuffix}${ext}`);
-  },
-});
+// Use memory storage — works on Vercel serverless (no persistent disk)
+const storage = multer.memoryStorage();
 
 const fileFilter = (
   _req: Request,
@@ -50,7 +34,8 @@ export async function uploadPrescription(req: Request, res: Response): Promise<v
     return;
   }
 
-  const fileUrl = `/uploads/prescriptions/${file.filename}`;
+  // Store as base64 data URI (works without persistent filesystem)
+  const fileUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
 
   const prescription = await prisma.prescription.create({
     data: {

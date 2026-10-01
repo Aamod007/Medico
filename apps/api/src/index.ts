@@ -11,8 +11,11 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Medico API server running on http://localhost:${PORT}`);
   console.log(`🩺 Healthcheck: http://localhost:${PORT}/api/health`);
 
-  // Start background jobs
-  startBackgroundJobs();
+  // Start background jobs only in non-serverless environments
+  // On Vercel, these run via Vercel Cron (see vercel.json)
+  if (process.env.VERCEL !== "1") {
+    startBackgroundJobs();
+  }
 });
 
 // Graceful shutdown handling

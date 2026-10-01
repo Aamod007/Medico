@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/cron/cleanup.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/cron/cleanup",
+      "dest": "api/cron/cleanup.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.ts"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

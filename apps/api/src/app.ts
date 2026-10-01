@@ -35,8 +35,10 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static uploads
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+// Static uploads: only serve in non-serverless environments
+if (process.env.VERCEL !== "1") {
+  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+}
 
 // General API rate limiting (300 requests per 15 minutes)
 const limiter = rateLimit({

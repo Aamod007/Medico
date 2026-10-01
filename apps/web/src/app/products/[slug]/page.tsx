@@ -17,11 +17,14 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { addItem } = useCartStore();
+  const { addItem: _addItem } = useCartStore();
+  const { guardCart } = useAuthGuard();
+  const addItem = guardCart(_addItem);
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
@@ -255,29 +258,29 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Medical Specification Tabs */}
-      <div className="bg-white rounded-3xl border border-[#D7DEDB] p-6 sm:p-8 space-y-6">
-        <div className="flex border-b border-[#D7DEDB] gap-6 text-sm font-bold">
+      <div className="bg-white rounded-3xl border border-[#D7DEDB] p-4 sm:p-8 space-y-6">
+        <div className="flex border-b border-[#D7DEDB] gap-4 sm:gap-6 text-xs sm:text-sm font-bold overflow-x-auto no-scrollbar -mx-4 sm:mx-0 px-4 sm:px-0">
           <button
             onClick={() => setActiveTab("uses")}
-            className={`pb-3 border-b-2 transition ${activeTab === "uses" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
+            className={`pb-3 border-b-2 transition whitespace-nowrap flex-shrink-0 ${activeTab === "uses" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
           >
             Indications & Uses
           </button>
           <button
             onClick={() => setActiveTab("sideEffects")}
-            className={`pb-3 border-b-2 transition ${activeTab === "sideEffects" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
+            className={`pb-3 border-b-2 transition whitespace-nowrap flex-shrink-0 ${activeTab === "sideEffects" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
           >
             Side Effects
           </button>
           <button
             onClick={() => setActiveTab("dosage")}
-            className={`pb-3 border-b-2 transition ${activeTab === "dosage" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
+            className={`pb-3 border-b-2 transition whitespace-nowrap flex-shrink-0 ${activeTab === "dosage" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
           >
             Dosage & How to Take
           </button>
           <button
             onClick={() => setActiveTab("storage")}
-            className={`pb-3 border-b-2 transition ${activeTab === "storage" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
+            className={`pb-3 border-b-2 transition whitespace-nowrap flex-shrink-0 ${activeTab === "storage" ? "border-[#0B4A3A] text-[#0B4A3A]" : "border-transparent text-[#5B6B65]"}`}
           >
             Storage & Packaging
           </button>

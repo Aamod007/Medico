@@ -461,18 +461,7 @@ export default function CartDrawer() {
                   <span className="text-xl font-black text-[#0B4A3A]">₹{finalPayable.toFixed(2)}</span>
                 </div>
 
-                {/* Total Savings Banner */}
-                {totalCombinedSavings > 0 && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2 flex items-center justify-between mt-1">
-                    <span className="text-xs font-bold text-[#0B4A3A] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
-                      Your total savings
-                    </span>
-                    <span className="text-sm font-extrabold text-[#10B981]">
-                      ₹{totalCombinedSavings.toFixed(2)} 🎉
-                    </span>
-                  </div>
-                )}
+
               </div>
 
               {/* Checkout Button */}

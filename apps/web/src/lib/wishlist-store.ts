@@ -8,6 +8,7 @@ interface WishlistStore {
   isWishlisted: (productId: string) => boolean;
   getCount: () => number;
   getIds: () => string[];
+  clearWishlist: () => void;
   syncWithBackend: () => Promise<void>;
 }
 
@@ -36,6 +37,12 @@ export const useWishlistStore = create<WishlistStore>()(
       },
       getCount: () => get().wishlistIds.size,
       getIds: () => Array.from(get().wishlistIds),
+      clearWishlist: () => {
+        set({ wishlistIds: new Set<string>() });
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("medico-wishlist");
+        }
+      },
       syncWithBackend: async () => {
         try {
           const res = await api.get("/wishlist");

@@ -17,12 +17,16 @@ import {
 import { api } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 function ProductListingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { addItem } = useCartStore();
-  const { toggle: toggleWishlist, isWishlisted } = useWishlistStore();
+  const { addItem: _addItem } = useCartStore();
+  const { toggle: _toggleWishlist, isWishlisted } = useWishlistStore();
+  const { guardCart, guardWishlist } = useAuthGuard();
+  const addItem = guardCart(_addItem);
+  const toggleWishlist = guardWishlist(_toggleWishlist);
 
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -279,41 +283,41 @@ function ProductListingContent() {
               </button>
             </div>
           ) : (
-            <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6" : "space-y-4"}>
+            <div className={viewMode === "grid" ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6" : "space-y-4"}>
               {products.map((p) => {
                 const defVariant = p.defaultVariant || p.variants?.[0];
                 return (
                   <div
                     key={p.id}
-                    className="bg-white rounded-[22px] border border-[#D7DEDB] p-4 flex flex-col justify-between hover:shadow-lg transition group relative"
+                    className="bg-white rounded-[18px] sm:rounded-[22px] border border-[#D7DEDB] p-3 sm:p-4 flex flex-col justify-between hover:shadow-lg transition group relative"
                   >
                     <div>
                       {/* Badges */}
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                         {p.isBestSeller ? (
-                          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[9px] sm:text-[10px] font-bold">
                             Best Seller
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-[#E6F4B8] text-[#0B4A3A] text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-full bg-[#E6F4B8] text-[#0B4A3A] text-[9px] sm:text-[10px] font-bold">
                             Verified
                           </span>
                         )}
                         <button
                           onClick={(e) => { e.preventDefault(); toggleWishlist(p.id); }}
                           title={isWishlisted(p.id) ? "Remove from wishlist" : "Add to wishlist"}
-                          className={`p-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                          className={`p-1 sm:p-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                             isWishlisted(p.id)
                               ? "text-red-500 bg-red-50 scale-110"
                               : "text-gray-400 hover:text-red-500 hover:bg-gray-50"
                           }`}
                         >
-                          <Heart className={`w-4 h-4 transition-all duration-200 ${isWishlisted(p.id) ? "fill-red-500" : ""}`} />
+                          <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-200 ${isWishlisted(p.id) ? "fill-red-500" : ""}`} />
                         </button>
                       </div>
 
                       {/* Image */}
-                      <Link href={`/products/${p.slug}`} className="block h-44 my-2 relative">
+                      <Link href={`/products/${p.slug}`} className="block h-32 sm:h-44 my-1 sm:my-2 relative">
                         <img
                           src={p.images?.[0] || "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=300"}
                           alt={p.name}
@@ -322,29 +326,29 @@ function ProductListingContent() {
                       </Link>
 
                       {/* Info */}
-                      <div className="space-y-1 pt-2">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#10B981]">
+                      <div className="space-y-0.5 sm:space-y-1 pt-1 sm:pt-2">
+                        <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#10B981]">
                           {p.brand?.name || "Genuine Brand"}
                         </div>
                         <Link href={`/products/${p.slug}`}>
-                          <h3 className="text-sm font-bold text-[#0F2A22] line-clamp-1 hover:text-[#0B4A3A] transition">
+                          <h3 className="text-xs sm:text-sm font-bold text-[#0F2A22] line-clamp-2 hover:text-[#0B4A3A] transition leading-tight">
                             {p.name}
                           </h3>
                         </Link>
-                        <p className="text-[11px] text-[#5B6B65] line-clamp-1">
+                        <p className="text-[10px] sm:text-[11px] text-[#5B6B65] line-clamp-1">
                           {p.composition || defVariant?.packSize || "Pharmacist verified"}
                         </p>
                       </div>
                     </div>
 
                     {/* Price and CTA */}
-                    <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 sm:pt-4 mt-2 border-t border-gray-100">
                       <div>
-                        <span className="text-base font-black text-[#0F2A22]">
+                        <span className="text-sm sm:text-base font-black text-[#0F2A22]">
                           ₹{defVariant?.price || 145}
                         </span>
                         {defVariant?.mrp > defVariant?.price && (
-                          <span className="text-xs text-gray-400 line-through ml-1.5">
+                          <span className="text-[10px] sm:text-xs text-gray-400 line-through ml-1.5">
                             ₹{defVariant.mrp}
                           </span>
                         )}
@@ -354,7 +358,7 @@ function ProductListingContent() {
                         type="button"
                         data-testid="add-to-cart-btn"
                         onClick={() => defVariant && addItem(defVariant.id)}
-                        className="px-4 py-1.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] text-xs font-bold transition shadow-sm cursor-pointer"
+                        className="w-full sm:w-auto px-3 sm:px-4 py-1.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] text-[11px] sm:text-xs font-bold transition shadow-sm cursor-pointer text-center"
                       >
                         Add to Cart
                       </button>
@@ -366,6 +370,134 @@ function ProductListingContent() {
           )}
         </main>
       </div>
+
+      {/* Mobile Filter Drawer / Sheet */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileFilterOpen(false)}
+          />
+          <div className="relative ml-auto w-full max-w-xs sm:max-w-sm bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-200">
+            {/* Header */}
+            <div className="p-4 bg-[#FAF3EA] border-b border-[#D7DEDB] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-[#0B4A3A]" />
+                <h3 className="font-bold text-sm text-[#0F2A22]">Filter Catalog</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="p-1.5 rounded-full hover:bg-white text-gray-500 hover:text-black cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter Content */}
+            <div className="p-4 overflow-y-auto flex-1 space-y-6">
+              {/* Categories */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#5B6B65] mb-2.5">
+                  Categories
+                </h4>
+                <div className="space-y-1 max-h-56 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateFilter("category", null);
+                      setMobileFilterOpen(false);
+                    }}
+                    className={`w-full text-left text-xs py-2 px-3 rounded-xl font-medium transition cursor-pointer ${
+                      !currentCategory ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    All Categories
+                  </button>
+                  {categories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        updateFilter("category", c.slug);
+                        setMobileFilterOpen(false);
+                      }}
+                      className={`w-full text-left text-xs py-2 px-3 rounded-xl font-medium transition flex items-center justify-between cursor-pointer ${
+                        currentCategory === c.slug
+                          ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span>{c.name}</span>
+                      {currentCategory === c.slug && <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Brands */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-[#5B6B65] mb-2.5">
+                  Brands
+                </h4>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateFilter("brand", null);
+                      setMobileFilterOpen(false);
+                    }}
+                    className={`w-full text-left text-xs py-2 px-3 rounded-xl font-medium transition cursor-pointer ${
+                      !currentBrand ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    All Brands
+                  </button>
+                  {brands.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => {
+                        updateFilter("brand", b.slug);
+                        setMobileFilterOpen(false);
+                      }}
+                      className={`w-full text-left text-xs py-2 px-3 rounded-xl font-medium transition flex items-center justify-between cursor-pointer ${
+                        currentBrand === b.slug
+                          ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span>{b.name}</span>
+                      {currentBrand === b.slug && <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 flex gap-2.5 bg-gray-50">
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/products");
+                  setMobileFilterOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-full border border-gray-300 text-xs font-bold text-gray-700 hover:bg-white cursor-pointer"
+              >
+                Clear All
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="flex-1 py-2.5 rounded-full bg-[#0B4A3A] text-white text-xs font-bold cursor-pointer"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

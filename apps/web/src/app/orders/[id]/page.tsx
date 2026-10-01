@@ -57,6 +57,22 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleDownloadPDF = () => {
+    const inlineUrl = `/api/orders/${order.id}/invoice?mode=inline`;
+    const downloadUrl = `/api/orders/${order.id}/invoice`;
+
+    // 1. Open PDF in a new tab for previewing
+    window.open(inlineUrl, "_blank");
+
+    // 2. Trigger automatic file download
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `Invoice_${order.orderNumber || order.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center text-sm text-[#5B6B65]">
@@ -129,15 +145,13 @@ export default function OrderDetailPage() {
             <Printer className="w-4 h-4 text-gray-700" />
             <span>Print Invoice</span>
           </button>
-          <a
-            href={`/api/orders/${order.id}/invoice`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition shadow-sm"
+          <button
+            onClick={handleDownloadPDF}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition shadow-sm cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span>PDF</span>
-          </a>
+            <span>Official PDF</span>
+          </button>
         </div>
       </div>
 

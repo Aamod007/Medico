@@ -14,11 +14,14 @@ import {
 } from "lucide-react";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import { useCartStore } from "@/lib/cart-store";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 import { api } from "@/lib/api";
 
 export default function WishlistPage() {
-  const { wishlistIds, toggle } = useWishlistStore();
-  const { addItem } = useCartStore();
+  const { wishlistIds, toggle, clearWishlist } = useWishlistStore();
+  const { addItem: _addItem } = useCartStore();
+  const { guardCart } = useAuthGuard();
+  const addItem = guardCart(_addItem);
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,7 +72,13 @@ export default function WishlistPage() {
   }, [hydrated, wishlistKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRemove = (productId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
     toggle(productId);
+  };
+
+  const handleClearAll = () => {
+    setProducts([]);
+    clearWishlist();
   };
 
   const handleAddToCart = (product: any) => {
@@ -107,13 +116,21 @@ export default function WishlistPage() {
         </div>
 
         {products.length > 0 && (
-          <button
-            onClick={handleAddAllToCart}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-sm font-bold transition shadow-md cursor-pointer"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Add All to Cart</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleClearAll}
+              className="px-4 py-2.5 rounded-full border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition cursor-pointer"
+            >
+              Clear All
+            </button>
+            <button
+              onClick={handleAddAllToCart}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs sm:text-sm font-bold transition shadow-md cursor-pointer"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Add All to Cart</span>
+            </button>
+          </div>
         )}
       </div>
 

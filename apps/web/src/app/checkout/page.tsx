@@ -323,7 +323,7 @@ export default function CheckoutPage() {
                   required
                   className="w-full p-2.5 rounded-xl border text-xs bg-white"
                 />
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <input
                     type="text"
                     placeholder="City"

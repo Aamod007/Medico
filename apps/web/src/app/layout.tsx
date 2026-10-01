@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import PillNav from "@/components/PillNav";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
+import AuthModalProvider from "@/components/AuthModalProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <Footer />
           <CartDrawer />
+          <AuthModalProvider />
         </ClerkProvider>
       </body>
     </html>

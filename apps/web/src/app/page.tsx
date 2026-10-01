@@ -23,11 +23,15 @@ import {
 import { api } from "@/lib/api";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
+import { useAuthGuard } from "@/lib/use-auth-guard";
 
 export default function HomePage() {
   const router = useRouter();
-  const { addItem } = useCartStore();
-  const { toggle: toggleWishlist, isWishlisted } = useWishlistStore();
+  const { addItem: _addItem } = useCartStore();
+  const { toggle: _toggleWishlist, isWishlisted } = useWishlistStore();
+  const { guardCart, guardWishlist } = useAuthGuard();
+  const addItem = guardCart(_addItem);
+  const toggleWishlist = guardWishlist(_toggleWishlist);
 
   const [categories, setCategories] = useState<any[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
@@ -196,7 +200,7 @@ export default function HomePage() {
             </div>
 
             {/* Doctor / Caregiver Portrait Visual - Properly sized for viewport */}
-            <div className="lg:col-span-5 xl:col-span-5 flex justify-center lg:justify-end relative">
+            <div className="hidden sm:flex lg:col-span-5 xl:col-span-5 justify-center lg:justify-end relative">
               <div className="relative w-full max-w-[320px] sm:max-w-[360px] xl:max-w-[400px] 2xl:max-w-[440px] h-[300px] sm:h-[340px] lg:h-[360px] xl:h-[380px] rounded-[28px] overflow-hidden border-4 border-white/15 shadow-2xl group">
                 <img
                   src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=800&auto=format&fit=crop&q=80"
@@ -268,6 +272,7 @@ export default function HomePage() {
                       onClick={() => {
                         setQuickCategory("");
                         setHeroCategoryOpen(false);
+                        router.push("/products");
                       }}
                       className={`w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                         !quickCategory ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold" : "text-gray-700 hover:bg-[#FAF3EA]/50"
@@ -283,6 +288,7 @@ export default function HomePage() {
                         onClick={() => {
                           setQuickCategory(c.slug);
                           setHeroCategoryOpen(false);
+                          router.push(`/products?category=${c.slug}`);
                         }}
                         className={`w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                           quickCategory === c.slug
@@ -444,40 +450,40 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6">
           {featuredProducts.slice(0, 12).map((p) => {
             const defVariant = p.defaultVariant || p.variants?.[0];
             return (
               <div
                 key={p.id}
-                className="bg-white rounded-[26px] border border-[#D7DEDB] p-4 sm:p-5 flex flex-col justify-between hover:shadow-xl transition-all duration-300 relative group"
+                className="bg-white rounded-[18px] sm:rounded-[26px] border border-[#D7DEDB] p-3 sm:p-5 flex flex-col justify-between hover:shadow-xl transition-all duration-300 relative group"
               >
                 {/* Badges & Wishlist */}
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                   {p.isBestSeller ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                    <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 text-[9px] sm:text-[10px] font-bold">
                       -25%
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#E6F4B8] text-[#0B4A3A] text-[10px] font-bold">
+                    <span className="px-2 sm:px-2.5 py-0.5 rounded-full bg-[#E6F4B8] text-[#0B4A3A] text-[9px] sm:text-[10px] font-bold">
                       New!
                     </span>
                   )}
                   <button
                     onClick={(e) => { e.preventDefault(); toggleWishlist(p.id); }}
                     title={isWishlisted(p.id) ? "Remove from wishlist" : "Add to wishlist"}
-                    className={`p-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                    className={`p-1 sm:p-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                       isWishlisted(p.id)
                         ? "text-red-500 bg-red-50 scale-110"
                         : "text-gray-400 hover:text-red-500 hover:bg-gray-50"
                     }`}
                   >
-                    <Heart className={`w-4 h-4 transition-all duration-200 ${isWishlisted(p.id) ? "fill-red-500" : ""}`} />
+                    <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-200 ${isWishlisted(p.id) ? "fill-red-500" : ""}`} />
                   </button>
                 </div>
 
                 {/* Product Image */}
-                <Link href={`/products/${p.slug}`} className="block h-44 sm:h-48 my-2 relative">
+                <Link href={`/products/${p.slug}`} className="block h-32 sm:h-48 my-1 sm:my-2 relative">
                   <img
                     src={p.images?.[0] || "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=400"}
                     alt={p.name}
@@ -486,29 +492,29 @@ export default function HomePage() {
                 </Link>
 
                 {/* Content */}
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex items-center gap-1 text-[11px] text-[#F5C043]">
+                <div className="space-y-1 sm:space-y-1.5 pt-1 sm:pt-2">
+                  <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-[#F5C043]">
                     {"★".repeat(5)}
                     <span className="text-gray-400 ml-1">({p.reviewCount || 1234})</span>
                   </div>
 
                   <Link href={`/products/${p.slug}`} className="block">
-                    <h3 className="text-sm font-bold text-[#0F2A22] line-clamp-1 hover:text-[#0B4A3A] transition">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#0F2A22] line-clamp-2 hover:text-[#0B4A3A] transition leading-tight">
                       {p.name}
                     </h3>
                   </Link>
 
-                  <p className="text-[11px] text-[#5B6B65] line-clamp-1">
+                  <p className="text-[10px] sm:text-[11px] text-[#5B6B65] line-clamp-1">
                     {p.composition || "Pharmacist recommended formulation"}
                   </p>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 sm:pt-3 border-t border-gray-100 mt-2">
                     <div>
-                      <span className="text-base font-black text-[#0F2A22]">
+                      <span className="text-sm sm:text-base font-black text-[#0F2A22]">
                         ₹{defVariant?.price || 145}
                       </span>
                       {defVariant?.mrp && (
-                        <span className="text-xs text-gray-400 line-through ml-1.5">
+                        <span className="text-[10px] sm:text-xs text-gray-400 line-through ml-1.5">
                           ₹{defVariant.mrp}
                         </span>
                       )}
@@ -516,7 +522,7 @@ export default function HomePage() {
 
                     <button
                       onClick={() => defVariant && addItem(defVariant.id)}
-                      className="px-4 py-1.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] text-xs font-bold transition shadow-sm"
+                      className="w-full sm:w-auto px-3 sm:px-4 py-1.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] text-[11px] sm:text-xs font-bold transition shadow-sm text-center"
                     >
                       Add to Cart
                     </button>
@@ -642,9 +648,9 @@ export default function HomePage() {
 
       {/* 7. FEATURED PRODUCT SPOTLIGHT */}
       <section className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12">
-        <div className="bg-white rounded-[32px] sm:rounded-[40px] border border-[#D7DEDB] p-8 sm:p-12 xl:p-16 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 xl:gap-16 items-center shadow-lg">
+        <div className="bg-white rounded-[28px] sm:rounded-[40px] border border-[#D7DEDB] p-5 sm:p-10 xl:p-16 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 xl:gap-16 items-center shadow-lg">
           <div className="lg:col-span-5 flex justify-center">
-            <div className="w-full max-w-[420px] sm:max-w-[480px] h-[360px] sm:h-[420px] xl:h-[460px] rounded-3xl bg-[#FAF3EA] p-8 flex items-center justify-center border border-[#FDE6D3]">
+            <div className="w-full max-w-[420px] sm:max-w-[480px] h-64 sm:h-[420px] xl:h-[460px] rounded-3xl bg-[#FAF3EA] p-6 sm:p-8 flex items-center justify-center border border-[#FDE6D3]">
               <img
                 src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80"
                 alt="Spotlight Medicine"

@@ -35,8 +35,14 @@ import { SignInButton, Show, UserButton } from "@clerk/nextjs";
 export default function Header() {
   const router = useRouter();
   const { itemCount, openDrawer, fetchCart } = useCartStore();
-  const { wishlistIds, getCount } = useWishlistStore();
-  const wishlistCount = wishlistIds.size;
+  const { wishlistIds } = useWishlistStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const wishlistCount = mounted ? wishlistIds.size : 0;
 
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
@@ -92,22 +98,22 @@ export default function Header() {
       subtitle: "Glucometers, test strips, lancets",
     },
     {
-      name: "First Aid & Trauma",
+      name: "First Aid & Trauma Care",
       slug: "first-aid",
       icon: ShieldCheck,
       subtitle: "Bandages, antiseptics, cotton",
     },
     {
-      name: "Digestive Health",
+      name: "Digestive & Gut Health",
       slug: "digestive-gut-health",
       icon: HeartPulse,
       subtitle: "Antacids, probiotics, laxatives",
     },
     {
-      name: "Ayurveda & Herbs",
-      slug: "ayurveda",
-      icon: Leaf,
-      subtitle: "Ashwagandha, neem, herbal tonics",
+      name: "Women's Health",
+      slug: "womens-health",
+      icon: Heart,
+      subtitle: "Maternal nutrition, iron, menstrual care",
     },
     {
       name: "Personal Care",
@@ -116,7 +122,7 @@ export default function Header() {
       subtitle: "Skin wellness, derma gels, washes",
     },
     {
-      name: "Mother & Baby",
+      name: "Baby Care",
       slug: "baby-care",
       icon: Baby,
       subtitle: "Pediatric drops, rash cream, diapers",
@@ -486,7 +492,9 @@ export default function Header() {
                           <button
                             key={cat.slug}
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               setSelectedCategoryName(cat.name);
                               setSelectedCategorySlug(cat.slug);
                               setIsCategoryDropdownOpen(false);
@@ -667,38 +675,93 @@ export default function Header() {
         </div>
 
         {/* Mobile Search Bar inside header if small screen */}
-        <div className="mt-3 md:hidden">
+        <div className="mt-3 md:hidden relative">
           <form
             onSubmit={handleSearchSubmit}
-            className="flex items-center w-full bg-white rounded-full px-4 py-2 shadow-sm text-sm"
+            className="flex items-center w-full bg-white rounded-full px-4 py-2 shadow-sm text-sm focus-within:ring-2 focus-within:ring-[#10B981] transition"
           >
             <input
               type="text"
               placeholder="Search for medicines, health products..."
               value={searchQuery}
               onChange={handleSearchChange}
+              onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
               className="flex-1 bg-transparent text-sm text-[#0F2A22] placeholder-gray-400 focus:outline-none"
             />
-            <button type="submit" className="p-1 text-gray-500">
+            <button type="submit" className="p-1 text-gray-500 hover:text-[#0B4A3A] transition">
               <Search className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Mobile Autocomplete Suggestions Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-11 left-0 right-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+              <div className="p-2 text-xs font-bold text-[#5B6B65] border-b border-gray-100 bg-[#FAF3EA]/40 flex items-center justify-between">
+                <span>Matching Medicines</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(false)}
+                  className="text-gray-400 hover:text-black p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="max-h-60 overflow-y-auto divide-y divide-gray-50">
+                {suggestions.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/products/${item.slug}`}
+                    onClick={() => {
+                      setShowSuggestions(false);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-between p-2.5 hover:bg-[#FAF3EA] transition"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {item.images?.[0] && (
+                        <img
+                          src={item.images[0]}
+                          alt={item.name}
+                          className="w-8 h-8 object-contain rounded-lg border bg-white flex-shrink-0"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[#0F2A22] truncate">
+                          {item.name}
+                        </div>
+                        {item.composition && (
+                          <div className="text-[10px] text-[#5B6B65] truncate">
+                            {item.composition}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {item.variants?.[0] && (
+                      <span className="text-xs font-extrabold text-[#0B4A3A] flex-shrink-0 pl-2">
+                        ₹{item.variants[0].price}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-[#D7DEDB] px-4 py-4 space-y-3">
+        <div className="md:hidden bg-white border-b border-[#D7DEDB] px-4 py-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#FAF3EA] text-xs font-bold text-[#0B4A3A]">
-            <MapPin className="w-4 h-4 text-[#0B4A3A]" />
-            <span>Delivering to {city} ({pincode})</span>
+            <MapPin className="w-4 h-4 text-[#0B4A3A] flex-shrink-0" />
+            <span className="truncate">Delivering to {city ? `${city} (${pincode})` : "Select Location"}</span>
             <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
                 setIsDeliveryDropdownOpen(true);
               }}
-              className="ml-auto underline text-[11px]"
+              className="ml-auto underline text-[11px] flex-shrink-0 font-bold hover:text-black"
             >
               Change
             </button>
@@ -708,31 +771,63 @@ export default function Header() {
             <Link
               href="/products"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#F4F6F5] text-[#0F2A22] font-semibold"
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
             >
-              Order Medicines
+              <span>Order Medicines</span>
             </Link>
             <Link
               href="/orders"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#F4F6F5] text-[#0F2A22] font-semibold"
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
             >
-              My Orders
+              <span>My Orders</span>
+            </Link>
+            <Link
+              href="/wishlist"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
+            >
+              <span>Saved Medicines</span>
             </Link>
             <Link
               href="/products?category=vitamins-and-supplements"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#F4F6F5] text-[#0F2A22]"
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
             >
-              Vitamins & Supplements
+              <span>Vitamins & Daily</span>
             </Link>
             <Link
-              href="/admin"
+              href="/lab-tests"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#0B4A3A] text-white text-center font-bold"
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
             >
-              Admin Panel
+              <span>Book Lab Tests</span>
             </Link>
+            <Link
+              href="/consultations"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
+            >
+              <span>Doctor Consult</span>
+            </Link>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-[#5B6B65]">
+            <Link
+              href="/contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-[#0B4A3A] font-semibold"
+            >
+              Help & Support
+            </Link>
+            <Link
+              href="/faqs"
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-[#0B4A3A] font-semibold"
+            >
+              FAQs
+            </Link>
+            <span className="text-[#10B981] font-bold">24-48h Delivery</span>
           </div>
         </div>
       )}

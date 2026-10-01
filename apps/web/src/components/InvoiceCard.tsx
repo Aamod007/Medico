@@ -77,15 +77,17 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
   };
 
   const handleDownloadPDF = () => {
-    const invoiceUrl = `/api/orders/${order.id}/invoice`;
+    const inlineUrl = `/api/orders/${order.id}/invoice?mode=inline`;
+    const downloadUrl = `/api/orders/${order.id}/invoice`;
     // Open PDF in new tab for viewing (inline mode)
-    window.open(`${invoiceUrl}?mode=inline`, "_blank");
-    // Also trigger actual file download via hidden iframe
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = invoiceUrl; // default mode = attachment (download)
-    document.body.appendChild(iframe);
-    setTimeout(() => iframe.remove(), 10000);
+    window.open(inlineUrl, "_blank");
+    // Also trigger actual file download
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `Invoice_${order.orderNumber || order.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (

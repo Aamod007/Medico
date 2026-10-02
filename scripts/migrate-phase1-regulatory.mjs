@@ -141,6 +141,23 @@ async function main() {
   await exec(`
     DO $$
     BEGIN
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Prescription' AND column_name = 'fileUrl' AND is_nullable = 'NO') THEN
+        ALTER TABLE "Prescription" ALTER COLUMN "fileUrl" DROP NOT NULL;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Prescription' AND column_name = 'fileType' AND is_nullable = 'NO') THEN
+        ALTER TABLE "Prescription" ALTER COLUMN "fileType" DROP NOT NULL;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Prescription' AND column_name = 'originalName' AND is_nullable = 'NO') THEN
+        ALTER TABLE "Prescription" ALTER COLUMN "originalName" DROP NOT NULL;
+      END IF;
+      IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Prescription' AND column_name = 'fileSize' AND is_nullable = 'NO') THEN
+        ALTER TABLE "Prescription" ALTER COLUMN "fileSize" DROP NOT NULL;
+      END IF;
+    END $$;
+  `, "Prescription legacy columns set to nullable");
+  await exec(`
+    DO $$
+    BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Prescription_familyMemberId_fkey') THEN
         ALTER TABLE "Prescription" ADD CONSTRAINT "Prescription_familyMemberId_fkey" 
           FOREIGN KEY ("familyMemberId") REFERENCES "FamilyMember"("id") ON DELETE SET NULL ON UPDATE CASCADE;

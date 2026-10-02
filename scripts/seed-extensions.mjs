@@ -8,7 +8,7 @@
  * Safety: Idempotent upserts. Does not truncate tables or delete existing user data.
  */
 
-import { PrismaClient, Role, AddressType, DiscountType, OrderStatus, PaymentStatus, PaymentMethod } from "@prisma/client";
+import { PrismaClient, Role, AddressType, DiscountType, OrderStatus, PaymentStatus, PaymentMethod, PrescriptionStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -93,14 +93,12 @@ async function main() {
     create: {
       id: "rx-cwo-approved",
       userId: customerWithOrders.id,
-      fileUrl: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800",
-      fileType: "image/jpeg",
-      originalName: "dr_sharma_prescription_verified.jpg",
-      fileSize: 450000,
+      fileKey: "prescriptions/dr_sharma_prescription_verified.jpg",
+      mimeType: "image/jpeg",
       status: PrescriptionStatus.APPROVED,
-      reviewedByPharmacistId: pharmacist.id,
+      reviewedBy: pharmacist.id,
       reviewedAt: new Date(),
-      notes: "Approved valid prescription for Schedule H antibiotics and analgesics",
+      validUntil: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
     },
   });
 
@@ -110,12 +108,9 @@ async function main() {
     create: {
       id: "rx-cwo-pending",
       userId: customerWithOrders.id,
-      fileUrl: "https://images.unsplash.com/photo-1584362917165-526a968579e8?w=800",
-      fileType: "image/jpeg",
-      originalName: "prescription_upload_pending.jpg",
-      fileSize: 320000,
+      fileKey: "prescriptions/prescription_upload_pending.jpg",
+      mimeType: "image/jpeg",
       status: PrescriptionStatus.PENDING,
-      notes: "Uploaded by customer, pending pharmacist review",
     },
   });
 
@@ -125,12 +120,10 @@ async function main() {
     create: {
       id: "rx-cwo-rejected",
       userId: customerWithOrders.id,
-      fileUrl: "https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800",
-      fileType: "image/jpeg",
-      originalName: "prescription_old_expired.jpg",
-      fileSize: 280000,
+      fileKey: "prescriptions/prescription_old_expired.jpg",
+      mimeType: "image/jpeg",
       status: PrescriptionStatus.REJECTED,
-      reviewedByPharmacistId: pharmacist.id,
+      reviewedBy: pharmacist.id,
       reviewedAt: new Date(),
       rejectionReason: "Prescription date is older than 6 months. Please provide a recent valid prescription.",
     },
@@ -324,11 +317,27 @@ async function main() {
   });
 
   if (firstVariant) {
+    const targetOrders = [
+      "MED-2026-100001",
+      "MED-2026-100002",
+      "MED-2026-100003",
+      "MED-2026-100004",
+      "MED-2026-100005",
+    ];
+    const existingOld = await prisma.order.findMany({ where: { orderNumber: { in: targetOrders } }, select: { id: true } });
+    if (existingOld.length > 0) {
+      const eIds = existingOld.map(o => o.id);
+      await prisma.orderStatusHistory.deleteMany({ where: { orderId: { in: eIds } } });
+      await prisma.payment.deleteMany({ where: { orderId: { in: eIds } } });
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: eIds } } });
+      await prisma.order.deleteMany({ where: { id: { in: eIds } } });
+    }
+
+    const baseT = new Date("2026-09-01T10:00:00.000Z");
+
     // Order 1: PLACED (COD)
-    await prisma.order.upsert({
-      where: { orderNumber: "MED-2026-100001" },
-      update: {},
-      create: {
+    await prisma.order.create({
+      data: {
         orderNumber: "MED-2026-100001",
         userId: customerWithOrders.id,
         addressId: homeAddr.id,
@@ -360,17 +369,15 @@ async function main() {
         },
         statusHistory: {
           create: [
-            { status: OrderStatus.PLACED, note: "Order placed successfully via COD" },
+            { status: OrderStatus.PLACED, note: "Order placed successfully via COD", createdAt: new Date(baseT.getTime()) },
           ],
         },
       },
     });
 
     // Order 2: CONFIRMED (Razorpay, Paid)
-    await prisma.order.upsert({
-      where: { orderNumber: "MED-2026-100002" },
-      update: {},
-      create: {
+    await prisma.order.create({
+      data: {
         orderNumber: "MED-2026-100002",
         userId: customerWithOrders.id,
         addressId: homeAddr.id,
@@ -415,18 +422,16 @@ async function main() {
         },
         statusHistory: {
           create: [
-            { status: OrderStatus.PLACED, note: "Order placed" },
-            { status: OrderStatus.CONFIRMED, note: "Payment verified via Razorpay UPI" },
+            { status: OrderStatus.PLACED, note: "Order placed", createdAt: new Date(baseT.getTime()) },
+            { status: OrderStatus.CONFIRMED, note: "Payment verified via Razorpay UPI", createdAt: new Date(baseT.getTime() + 60000) },
           ],
         },
       },
     });
 
     // Order 3: SHIPPED
-    await prisma.order.upsert({
-      where: { orderNumber: "MED-2026-100003" },
-      update: {},
-      create: {
+    await prisma.order.create({
+      data: {
         orderNumber: "MED-2026-100003",
         userId: customerWithOrders.id,
         addressId: workAddr.id,
@@ -456,22 +461,33 @@ async function main() {
             },
           ],
         },
+        payments: {
+          create: [
+            {
+              razorpayOrderId: "order_test_rzp_100003",
+              razorpayPaymentId: "pay_test_rzp_100003",
+              razorpaySignature: "sig_test_valid_100003",
+              amount: 580,
+              currency: "INR",
+              status: PaymentStatus.PAID,
+              method: "CARD",
+            },
+          ],
+        },
         statusHistory: {
           create: [
-            { status: OrderStatus.PLACED, note: "Order placed" },
-            { status: OrderStatus.CONFIRMED, note: "Confirmed" },
-            { status: OrderStatus.PACKED, note: "Packed in cold bag" },
-            { status: OrderStatus.SHIPPED, note: "Dispatched via BlueDart AWB #94810294" },
+            { status: OrderStatus.PLACED, note: "Order placed", createdAt: new Date(baseT.getTime()) },
+            { status: OrderStatus.CONFIRMED, note: "Confirmed", createdAt: new Date(baseT.getTime() + 60000) },
+            { status: OrderStatus.PACKED, note: "Packed in cold bag", createdAt: new Date(baseT.getTime() + 120000) },
+            { status: OrderStatus.SHIPPED, note: "Dispatched via BlueDart AWB #94810294", createdAt: new Date(baseT.getTime() + 180000) },
           ],
         },
       },
     });
 
     // Order 4: DELIVERED
-    await prisma.order.upsert({
-      where: { orderNumber: "MED-2026-100004" },
-      update: {},
-      create: {
+    await prisma.order.create({
+      data: {
         orderNumber: "MED-2026-100004",
         userId: customerWithOrders.id,
         addressId: homeAddr.id,
@@ -501,24 +517,35 @@ async function main() {
             },
           ],
         },
+        payments: {
+          create: [
+            {
+              razorpayOrderId: "order_test_rzp_100004",
+              razorpayPaymentId: "pay_test_rzp_100004",
+              razorpaySignature: "sig_test_valid_100004",
+              amount: 625,
+              currency: "INR",
+              status: PaymentStatus.PAID,
+              method: "UPI",
+            },
+          ],
+        },
         statusHistory: {
           create: [
-            { status: OrderStatus.PLACED, note: "Order placed" },
-            { status: OrderStatus.CONFIRMED, note: "Confirmed" },
-            { status: OrderStatus.PACKED, note: "Packed" },
-            { status: OrderStatus.SHIPPED, note: "Dispatched" },
-            { status: OrderStatus.OUT_FOR_DELIVERY, note: "Out for delivery with Rider Ramesh (+91 98451 00021)" },
-            { status: OrderStatus.DELIVERED, note: "Delivered to customer" },
+            { status: OrderStatus.PLACED, note: "Order placed", createdAt: new Date(baseT.getTime()) },
+            { status: OrderStatus.CONFIRMED, note: "Confirmed", createdAt: new Date(baseT.getTime() + 60000) },
+            { status: OrderStatus.PACKED, note: "Packed", createdAt: new Date(baseT.getTime() + 120000) },
+            { status: OrderStatus.SHIPPED, note: "Dispatched", createdAt: new Date(baseT.getTime() + 180000) },
+            { status: OrderStatus.OUT_FOR_DELIVERY, note: "Out for delivery with Rider Ramesh (+91 98451 00021)", createdAt: new Date(baseT.getTime() + 240000) },
+            { status: OrderStatus.DELIVERED, note: "Delivered to customer", createdAt: new Date(baseT.getTime() + 300000) },
           ],
         },
       },
     });
 
     // Order 5: CANCELLED
-    await prisma.order.upsert({
-      where: { orderNumber: "MED-2026-100005" },
-      update: {},
-      create: {
+    await prisma.order.create({
+      data: {
         orderNumber: "MED-2026-100005",
         userId: customerWithOrders.id,
         addressId: homeAddr.id,
@@ -549,8 +576,8 @@ async function main() {
         },
         statusHistory: {
           create: [
-            { status: OrderStatus.PLACED, note: "Order placed" },
-            { status: OrderStatus.CANCELLED, note: "Cancelled before packing" },
+            { status: OrderStatus.PLACED, note: "Order placed", createdAt: new Date(baseT.getTime()) },
+            { status: OrderStatus.CANCELLED, note: "Cancelled before packing", createdAt: new Date(baseT.getTime() + 60000) },
           ],
         },
       },
@@ -612,6 +639,88 @@ async function main() {
       where: { code: c.code },
       update: c,
       create: c,
+    });
+  }
+
+  // Ensure MAXUSED has exactly 5 orders referencing it to satisfy invariant C8
+  const maxUsedCoupon = await prisma.coupon.findUnique({ where: { code: "MAXUSED" } });
+  if (maxUsedCoupon && customerWithOrders && homeAddr && firstVariant) {
+    const maxOrders = ["MED-MAXUSED-100001", "MED-MAXUSED-100002", "MED-MAXUSED-100003", "MED-MAXUSED-100004", "MED-MAXUSED-100005"];
+    const oldMax = await prisma.order.findMany({ where: { orderNumber: { in: maxOrders } }, select: { id: true } });
+    if (oldMax.length > 0) {
+      const oIds = oldMax.map(o => o.id);
+      await prisma.orderStatusHistory.deleteMany({ where: { orderId: { in: oIds } } });
+      await prisma.payment.deleteMany({ where: { orderId: { in: oIds } } });
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: oIds } } });
+      await prisma.order.deleteMany({ where: { id: { in: oIds } } });
+    }
+
+    const baseT = new Date("2026-09-01T10:00:00.000Z");
+    for (let i = 1; i <= 5; i++) {
+      const orderNum = `MED-MAXUSED-10000${i}`;
+      await prisma.order.create({
+        data: {
+          orderNumber: orderNum,
+          userId: customerWithOrders.id,
+          addressId: homeAddr.id,
+          status: OrderStatus.DELIVERED,
+          subtotal: 290,
+          discount: 50,
+          gstAmount: 25.71,
+          deliveryFee: 0,
+          totalAmount: 240,
+          paymentMethod: PaymentMethod.RAZORPAY,
+          paymentStatus: PaymentStatus.PAID,
+          isPaid: true,
+          couponId: maxUsedCoupon.id,
+          deliverySlot: "Standard Delivery",
+          items: {
+            create: [
+              {
+                variantId: firstVariant.id,
+                productName: firstVariant.product.name,
+                packSize: firstVariant.packSize,
+                sku: firstVariant.sku,
+                price: firstVariant.price,
+                mrp: firstVariant.mrp,
+                gstRate: firstVariant.product.gstRate,
+                gstAmount: 25.71,
+                quantity: 2,
+                subtotal: 290,
+              },
+            ],
+          },
+          statusHistory: {
+            create: [
+              { status: OrderStatus.PLACED, note: "Order placed", createdAt: new Date(baseT.getTime()) },
+              { status: OrderStatus.CONFIRMED, note: "Confirmed", createdAt: new Date(baseT.getTime() + 60000) },
+              { status: OrderStatus.DELIVERED, note: "Delivered", createdAt: new Date(baseT.getTime() + 120000) },
+            ],
+          },
+          payments: {
+            create: [
+              {
+                razorpayOrderId: `order_seed_maxused_${i}`,
+                razorpayPaymentId: `pay_seed_maxused_${i}`,
+                amount: 240,
+                currency: "INR",
+                status: PaymentStatus.PAID,
+                method: "UPI",
+              },
+            ],
+          },
+        },
+      });
+    }
+  }
+
+  // Ensure WELCOME50 usedCount matches actual orders
+  const welcomeCoupon = await prisma.coupon.findUnique({ where: { code: "WELCOME50" } });
+  if (welcomeCoupon) {
+    const actualWelcomeOrders = await prisma.order.count({ where: { couponId: welcomeCoupon.id } });
+    await prisma.coupon.update({
+      where: { code: "WELCOME50" },
+      data: { usedCount: actualWelcomeOrders },
     });
   }
 

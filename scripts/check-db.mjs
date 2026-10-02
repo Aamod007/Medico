@@ -7,7 +7,6 @@ async function main() {
   const users = await prisma.user.count();
   const addresses = await prisma.address.count();
   const products = await prisma.product.count();
-  const rxProducts = await prisma.product.count({ where: { prescriptionRequired: true } });
   const variants = await prisma.productVariant.count();
   const batches = await prisma.inventoryBatch.count();
   const expiredBatches = await prisma.inventoryBatch.count({ where: { expiryDate: { lt: new Date() } } });
@@ -15,9 +14,6 @@ async function main() {
   const categories = await prisma.category.count();
   const brands = await prisma.brand.count();
   const coupons = await prisma.coupon.count();
-  const doctors = await prisma.doctor.count();
-  const labTests = await prisma.labTest.count();
-  const prescriptions = await prisma.prescription.count();
   const orders = await prisma.order.count();
   const settings = await prisma.setting.count();
 
@@ -25,7 +21,6 @@ async function main() {
     users,
     addresses,
     products,
-    rxProducts,
     variants,
     batches,
     expiredBatches,
@@ -33,9 +28,6 @@ async function main() {
     categories,
     brands,
     coupons,
-    doctors,
-    labTests,
-    prescriptions,
     orders,
     settings,
   });

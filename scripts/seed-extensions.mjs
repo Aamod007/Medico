@@ -1,4 +1,4 @@
-import { PrismaClient, Role, AddressType, DiscountType, OrderStatus, PaymentStatus, PaymentMethod, PrescriptionStatus } from "@prisma/client";
+import { PrismaClient, Role, AddressType, DiscountType, OrderStatus, PaymentStatus, PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -139,8 +139,6 @@ async function main() {
       },
     },
     data: {
-      prescriptionRequired: true,
-      scheduleType: "Schedule H",
     },
   });
 
@@ -153,7 +151,7 @@ async function main() {
   if (ciplaBrand && essentialsCat) {
     const augmentin = await prisma.product.upsert({
       where: { slug: "augmentin-625-duo-tablets" },
-      update: { prescriptionRequired: true, scheduleType: "Schedule H1" },
+      update: { },
       create: {
         name: "Augmentin 625 Duo Antibiotic Tablets",
         slug: "augmentin-625-duo-tablets",
@@ -167,8 +165,6 @@ async function main() {
         countryOfOrigin: "India",
         hsnCode: "300410",
         gstRate: 12.0,
-        prescriptionRequired: true,
-        scheduleType: "Schedule H1",
         brandId: ciplaBrand.id,
         categoryId: essentialsCat.id,
         images: ["https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600"],
@@ -229,8 +225,6 @@ async function main() {
         countryOfOrigin: "India",
         hsnCode: "300490",
         gstRate: 12.0,
-        prescriptionRequired: false,
-        scheduleType: "OTC",
         brandId: sunBrand.id,
         categoryId: essentialsCat.id,
         images: ["https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600"],

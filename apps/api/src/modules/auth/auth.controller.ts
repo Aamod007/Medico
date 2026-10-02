@@ -36,6 +36,13 @@ export async function register(req: Request<{}, {}, RegisterInput>, res: Respons
   const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
   const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
 
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -83,6 +90,13 @@ export async function login(req: Request<{}, {}, LoginWithPasswordInput>, res: R
 
   const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
   const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
@@ -161,6 +175,13 @@ export async function verifyOtp(req: Request<{}, {}, VerifyOtpInput>, res: Respo
   const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
   const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
 
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -203,6 +224,12 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     }
 
     const newAccessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    });
     res.json({
       success: true,
       data: { accessToken: newAccessToken },
@@ -213,6 +240,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 }
 
 export async function logout(_req: Request, res: Response): Promise<void> {
+  res.clearCookie("accessToken");
   res.clearCookie("refreshToken");
   res.json({ success: true, message: "Logged out successfully" });
 }

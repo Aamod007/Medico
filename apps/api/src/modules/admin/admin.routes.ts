@@ -8,10 +8,14 @@ import {
   getInventoryBatches,
 } from "./admin.controller";
 import { authenticate, requireRole } from "../../middlewares/auth";
+import { Role } from "@prisma/client";
 
 const router = Router();
 
-// In development or demo mode, allow public preview with option for strict auth
+// Secure all admin and pharmacy operations
+router.use(authenticate);
+router.use(requireRole(Role.ADMIN, Role.PHARMACIST));
+
 router.get("/stats", getDashboardStats);
 router.get("/orders", getAllOrders);
 router.patch("/orders/:id/status", updateOrderStatus);

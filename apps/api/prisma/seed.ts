@@ -145,7 +145,7 @@ async function main() {
       name: "Baby Care",
       slug: "baby-care",
       description: "Pediatric nutrition, baby lotion, gentle washes, and diapers",
-      image: "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=300&auto=format&fit=crop&q=80",
+      image: "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=300&auto=format&fit=crop&q=80",
       icon: "Smile",
       sortOrder: 6,
     },
@@ -1288,7 +1288,7 @@ async function main() {
       brandSlug: "abbott",
       categorySlug: "baby-care",
       images: [
-        "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: true,
       isBestSeller: true,
@@ -1338,7 +1338,7 @@ async function main() {
       brandSlug: "himalaya-wellness",
       categorySlug: "baby-care",
       images: [
-        "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: false,
       isBestSeller: true,
@@ -1388,7 +1388,7 @@ async function main() {
       brandSlug: "dabur",
       categorySlug: "baby-care",
       images: [
-        "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: false,
       isBestSeller: true,
@@ -1438,7 +1438,7 @@ async function main() {
       brandSlug: "zydus",
       categorySlug: "baby-care",
       images: [
-        "https://images.unsplash.com/photo-1550572017-edd951aa8f72?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: false,
       isBestSeller: false,

@@ -23,14 +23,28 @@ const nextConfig = {
   },
 
   async rewrites() {
-    return {
-      fallback: [
-        {
-          source: "/api/:path*",
-          destination: `${process.env.API_URL || "http://localhost:5000"}/api/:path*`,
-        },
-      ],
-    };
+    const apiUrl = process.env.API_URL;
+    if (apiUrl && !apiUrl.includes("localhost")) {
+      return {
+        fallback: [
+          {
+            source: "/api/:path*",
+            destination: `${apiUrl}/api/:path*`,
+          },
+        ],
+      };
+    }
+    if (process.env.NODE_ENV !== "production") {
+      return {
+        fallback: [
+          {
+            source: "/api/:path*",
+            destination: "http://localhost:5000/api/:path*",
+          },
+        ],
+      };
+    }
+    return [];
   },
 };
 

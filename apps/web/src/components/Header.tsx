@@ -25,12 +25,14 @@ import {
   Baby,
   LayoutGrid,
   Tag,
+  Package,
+  Navigation,
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import { api } from "@/lib/api";
-import { resolvePincode } from "@/lib/location";
-import { SignInButton, Show, UserButton } from "@clerk/nextjs";
+import { resolvePincode, detectUserLocation } from "@/lib/location";
+import { SignInButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { BRAND_CONFIG } from "@medico/shared";
 
 export default function Header() {
@@ -45,9 +47,11 @@ export default function Header() {
 
   const wishlistCount = mounted ? wishlistIds.size : 0;
 
+  const { user, isSignedIn } = useUser();
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [isDeliveryDropdownOpen, setIsDeliveryDropdownOpen] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Category dropdown inside search pill
@@ -65,11 +69,15 @@ export default function Header() {
     { name: "Bangalore", pin: "560103", state: "Karnataka" },
     { name: "Mumbai", pin: "400001", state: "Maharashtra" },
     { name: "Delhi NCR", pin: "110001", state: "Delhi" },
+    { name: "Lucknow", pin: "226004", state: "Uttar Pradesh" },
+    { name: "Jalandhar", pin: "144411", state: "Punjab" },
     { name: "Hyderabad", pin: "500001", state: "Telangana" },
     { name: "Chennai", pin: "600001", state: "Tamil Nadu" },
     { name: "Pune", pin: "411001", state: "Maharashtra" },
     { name: "Kolkata", pin: "700001", state: "West Bengal" },
     { name: "Ahmedabad", pin: "380001", state: "Gujarat" },
+    { name: "Jaipur", pin: "302001", state: "Rajasthan" },
+    { name: "Chandigarh", pin: "160017", state: "Punjab" },
   ];
 
 
@@ -122,18 +130,111 @@ export default function Header() {
     })),
   ];
 
-  // Initialize location from localStorage
+  // Initialize location from localStorage or auto-detect if not set
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedPin = localStorage.getItem("medico_pincode");
       const savedCity = localStorage.getItem("medico_city");
-      if (savedPin) {
+      if (savedPin && savedCity) {
         setPincode(savedPin);
         setModalPincode(savedPin);
+        setCity(savedCity);
+      } else {
+        // Auto-detect location on first visit
+        detectUserLocation().then((loc) => {
+          if (loc.success && loc.city && loc.pincode) {
+            setPincode(loc.pincode);
+            setModalPincode(loc.pincode);
+            setCity(loc.city);
+            localStorage.setItem("medico_pincode", loc.pincode);
+            localStorage.setItem("medico_city", loc.city);
+            window.dispatchEvent(
+              new CustomEvent("medico-location-changed", {
+                detail: { pincode: loc.pincode, city: loc.city },
+              })
+            );
+          }
+        });
       }
-      if (savedCity) setCity(savedCity);
+
+      // Listen for location changes from other components (e.g. checkout, address selection)
+      const handleLocChange = (e: any) => {
+        if (e.detail?.city) setCity(e.detail.city);
+        if (e.detail?.pincode) {
+          setPincode(e.detail.pincode);
+          setModalPincode(e.detail.pincode);
+        }
+      };
+      window.addEventListener("medico-location-changed", handleLocChange);
+      return () => window.removeEventListener("medico-location-changed", handleLocChange);
     }
   }, []);
+
+  // User's saved addresses available for optional manual selection in the location dropdown
+  const [userSavedAddresses, setUserSavedAddresses] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setUserSavedAddresses([]);
+      return;
+    }
+    api
+      .get("/users/addresses")
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setUserSavedAddresses(res.data);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const handleSelectSavedAddress = (addr: any) => {
+    if (addr?.city && addr?.pincode) {
+      setCity(addr.city);
+      setPincode(addr.pincode);
+      setModalPincode(addr.pincode);
+      setPincodeError("");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("medico_pincode", addr.pincode);
+        localStorage.setItem("medico_city", addr.city);
+        window.dispatchEvent(
+          new CustomEvent("medico-location-changed", {
+            detail: { pincode: addr.pincode, city: addr.city },
+          })
+        );
+      }
+      setIsDeliveryDropdownOpen(false);
+    }
+  };
+
+  const handleDetectCurrentLocation = async () => {
+    setIsDetectingLocation(true);
+    setPincodeError("");
+    try {
+      const loc = await detectUserLocation();
+      if (loc.success && loc.city && loc.pincode) {
+        setCity(loc.city);
+        setPincode(loc.pincode);
+        setModalPincode(loc.pincode);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("medico_pincode", loc.pincode);
+          localStorage.setItem("medico_city", loc.city);
+          window.dispatchEvent(
+            new CustomEvent("medico-location-changed", {
+              detail: { pincode: loc.pincode, city: loc.city },
+            })
+          );
+        }
+        setIsDeliveryDropdownOpen(false);
+      } else {
+        setPincodeError(loc.error || "Could not detect location. Please enter PIN code manually.");
+      }
+    } catch {
+      setPincodeError("Location detection failed. Please enter your PIN code.");
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
 
   const handleSelectCity = (c: { name: string; pin: string }) => {
     setCity(c.name);
@@ -232,9 +333,23 @@ export default function Header() {
     <header className="sticky top-0 z-40 w-full bg-[#F4F6F5]">
       {/* Dark Green Brand Navbar Container with Rounded Bottom */}
       <div className="bg-[#0B4A3A] text-white rounded-b-[24px] lg:rounded-b-[28px] shadow-sm pb-4 pt-1 px-4 sm:px-8 xl:px-12">
-        {/* Top Centered Free Delivery Announcement */}
-        <div className="text-center text-[12px] sm:text-xs py-1.5 text-white/90 font-medium tracking-wide">
-          Get Free Delivery over <span className="font-bold text-white">₹500</span>
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between text-[12px] sm:text-xs py-1.5 text-white/90 font-medium tracking-wide">
+          <div className="hidden sm:block text-white/70 text-[11px]">
+            Genuine Medicines • 100% Cold-Chain Handled
+          </div>
+          <div className="text-center flex-1 sm:flex-initial">
+            Get Free Delivery over <span className="font-bold text-white">₹500</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-3">
+            <Link
+              href="/orders"
+              className="hover:text-white font-semibold flex items-center gap-1.5 transition text-white/80 hover:text-white"
+            >
+              <Package className="w-3.5 h-3.5 text-[#10B981]" />
+              <span>My Orders & Tracking</span>
+            </Link>
+          </div>
         </div>
 
         {/* Main Content Bar */}
@@ -302,8 +417,27 @@ export default function Header() {
                     </button>
                   </div>
 
+                  {/* Auto-Detect Current Location Button */}
+                  <div className="pt-2 pb-1">
+                    <button
+                      type="button"
+                      disabled={isDetectingLocation}
+                      onClick={handleDetectCurrentLocation}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#FAF3EA] hover:bg-[#f5e6d3] text-[#0B4A3A] font-bold text-xs transition cursor-pointer border border-[#FDE6D3] disabled:opacity-50 shadow-2xs"
+                    >
+                      <Navigation className={`w-3.5 h-3.5 text-[#10B981] ${isDetectingLocation ? "animate-spin" : ""}`} />
+                      <span>{isDetectingLocation ? "Detecting location..." : "Use Current Location (GPS / IP)"}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 my-1 text-[10px] text-gray-400 font-bold justify-center">
+                    <div className="flex-1 h-px bg-gray-100" />
+                    <span>OR ENTER PINCODE</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+
                   {/* Pincode Search / Input */}
-                  <form onSubmit={handleApplyPincode} className="py-2.5">
+                  <form onSubmit={handleApplyPincode} className="py-1.5">
                     <div className="flex items-center gap-1.5">
                       <input
                         type="text"
@@ -329,6 +463,45 @@ export default function Header() {
 
 
                   <div className="border-t border-gray-100 my-1" />
+
+                  {/* Saved User Addresses if available */}
+                  {userSavedAddresses.length > 0 && (
+                    <div className="pb-2">
+                      <div className="text-[10px] font-bold text-[#5B6B65] uppercase tracking-wider py-1 px-1">
+                        Your Saved Addresses
+                      </div>
+                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                        {userSavedAddresses.map((addr) => {
+                          const isSelected = pincode === addr.pincode;
+                          return (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => handleSelectSavedAddress(addr)}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold border border-[#0B4A3A]/20"
+                                  : "text-gray-700 hover:bg-[#F4F6F5]"
+                              }`}
+                            >
+                              <div className="truncate mr-2">
+                                <span className="font-bold text-[#0F2A22] text-xs">
+                                  {addr.fullName || addr.type}
+                                </span>
+                                <span className="text-[11px] text-[#5B6B65] block truncate">
+                                  {addr.addressLine1}, {addr.city} ({addr.pincode})
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t border-gray-100 my-1.5" />
+                    </div>
+                  )}
 
                   {/* City List Header */}
                   <div className="text-[10px] font-bold text-[#5B6B65] uppercase tracking-wider py-1.5 px-1">
@@ -556,7 +729,16 @@ export default function Header() {
               </Show>
             </div>
 
-            {/* 2. Wishlist / Heart Icon Button */}
+            {/* 2. My Orders Icon Button */}
+            <Link
+              href="/orders"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/25 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition cursor-pointer relative"
+              title="My Orders & Tax Invoices"
+            >
+              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </Link>
+
+            {/* 3. Wishlist / Heart Icon Button */}
             <Link
               href="/wishlist"
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/25 flex items-center justify-center text-white hover:bg-white/10 hover:border-white transition cursor-pointer relative"
@@ -574,7 +756,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* 3. Shopping Basket Icon Button */}
+            {/* 4. Shopping Basket Icon Button */}
             <button
               type="button"
               onClick={openDrawer}

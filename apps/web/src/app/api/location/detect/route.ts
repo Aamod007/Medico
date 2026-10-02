@@ -89,7 +89,20 @@ export async function GET(req: NextRequest) {
   }
 
   // 3. IP-based geolocation (primary for desktop users without GPS)
-  const ipResult = await fetchIPBasedPin();
+  const forwarded = req.headers.get("x-forwarded-for");
+  const cfIp = req.headers.get("cf-connecting-ip");
+  const realIp = req.headers.get("x-real-ip");
+  const rawClientIp = (cfIp || (forwarded ? forwarded.split(",")[0].trim() : realIp) || "").trim();
+  const isPrivate =
+    !rawClientIp ||
+    rawClientIp === "127.0.0.1" ||
+    rawClientIp === "::1" ||
+    rawClientIp.startsWith("10.") ||
+    rawClientIp.startsWith("192.168.") ||
+    rawClientIp.startsWith("172.16.");
+  const targetIp = isPrivate ? "" : rawClientIp;
+
+  const ipResult = await fetchIPBasedPin(targetIp);
   if (ipResult.city && ipResult.pincode) {
     return NextResponse.json({
       success: true,
@@ -113,16 +126,17 @@ export async function GET(req: NextRequest) {
 /**
  * Try multiple IP geolocation services in sequence and return the first valid Indian location.
  */
-async function fetchIPBasedPin(): Promise<{
+async function fetchIPBasedPin(targetIp: string = ""): Promise<{
   city: string;
   pincode: string;
   state: string;
 }> {
   const empty = { city: "", pincode: "", state: "" };
 
-  // Service 1: ipwho.is (fast, free)
+  // Service 1: ipwho.is (fast, accurate for Indian ISPs)
   try {
-    const res = await fetch("https://ipwho.is/", {
+    const url = targetIp ? `https://ipwho.is/${encodeURIComponent(targetIp)}` : "https://ipwho.is/";
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(4000),
     });
     if (res.ok) {
@@ -135,7 +149,7 @@ async function fetchIPBasedPin(): Promise<{
           ? resolved.city
           : formatCityName(data.city, data.region);
         if (city && pin) {
-          return { city, pincode: pin, state: data.region || "" };
+          return { city, pincode: pin, state: resolved.state || data.region || "" };
         }
         if (city) {
           return { city, pincode: "", state: data.region || "" };
@@ -148,19 +162,22 @@ async function fetchIPBasedPin(): Promise<{
 
   // Service 2: ip-api.com (fallback)
   try {
-    const res = await fetch("http://ip-api.com/json/?fields=status,country,regionName,city,zip", {
+    const url = targetIp
+      ? `http://ip-api.com/json/${encodeURIComponent(targetIp)}?fields=status,country,regionName,city,zip`
+      : "http://ip-api.com/json/?fields=status,country,regionName,city,zip";
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(4000),
     });
     if (res.ok) {
       const data = await res.json();
       if (data?.status === "success" && data.country === "India") {
         const pin = data.zip && /^\d{6}$/.test(data.zip) ? data.zip : "";
-        const resolved = pin ? resolvePincode(pin) : { valid: false, city: "" };
+        const resolved = pin ? resolvePincode(pin) : { valid: false, city: "", state: "" };
         const city = resolved.valid
           ? resolved.city
           : formatCityName(data.city, data.regionName);
         if (city && pin) {
-          return { city, pincode: pin, state: data.regionName || "" };
+          return { city, pincode: pin, state: resolved.state || data.regionName || "" };
         }
         if (city) {
           return { city, pincode: "", state: data.regionName || "" };
@@ -173,3 +190,4 @@ async function fetchIPBasedPin(): Promise<{
 
   return empty;
 }
+

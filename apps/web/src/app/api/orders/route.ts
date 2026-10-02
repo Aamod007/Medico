@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 import { getAuthenticatedUser, ensureUserExistsInDb } from "@/lib/server-auth";
+import { resolvePincode } from "@/lib/location";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
@@ -15,61 +16,35 @@ function getHeaders() {
 export async function GET(req: NextRequest) {
   try {
     const userCtx = await getAuthenticatedUser(req);
-    const { userId, placedOrderIds } = userCtx;
+    const { userId } = userCtx;
 
-    // Strict privacy guarantee: if unauthenticated and has no placed session orders, return empty list
-    if (!userId && placedOrderIds.length === 0) {
+    // Strict privacy guarantee: orders are scoped exclusively to the authenticated user account.
+    if (!userId) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const orderMap = new Map<string, any>();
-
-    // 1. Fetch orders belonging directly to this authenticated user
-    if (userId) {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/Order?userId=eq.${encodeURIComponent(userId)}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
-        { headers: getHeaders(), cache: "no-store" }
-      );
-
-      if (res.ok) {
-        const userOrders = await res.json();
-        if (Array.isArray(userOrders)) {
-          for (const order of userOrders) {
-            orderMap.set(order.id, order);
-          }
-        }
-      }
-    }
-
-    // 2. Fetch any session-placed orders (only those verified in user's browser cookie)
-    if (placedOrderIds.length > 0) {
-      const validUuids = placedOrderIds.filter((id) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-      );
-
-      if (validUuids.length > 0) {
-        const inFilter = `(${validUuids.map((id) => `"${id}"`).join(",")})`;
-        const placedRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/Order?id=in.${inFilter}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
-          { headers: getHeaders(), cache: "no-store" }
-        );
-
-        if (placedRes.ok) {
-          const placedOrders = await placedRes.json();
-          if (Array.isArray(placedOrders)) {
-            for (const order of placedOrders) {
-              orderMap.set(order.id, order);
-            }
-          }
-        }
-      }
-    }
-
-    const finalOrders = Array.from(orderMap.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/Order?userId=eq.${encodeURIComponent(userId)}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
+      { headers: getHeaders(), cache: "no-store" }
     );
 
-    return NextResponse.json({ success: true, data: finalOrders });
+    let userOrders: any[] = [];
+    if (res.ok) {
+      const parsed = await res.json();
+      if (Array.isArray(parsed)) {
+        userOrders = parsed;
+      }
+    }
+
+    const response = NextResponse.json({ success: true, data: userOrders });
+
+    // Always clear legacy browser cookie if present
+    response.cookies.set("medico_placed_order_ids", "", {
+      path: "/",
+      maxAge: 0,
+    });
+
+    return response;
   } catch (error: any) {
     console.error("GET /api/orders error:", error?.message);
     return NextResponse.json({ success: true, data: [] });
@@ -79,7 +54,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userCtx = await getAuthenticatedUser(req);
-    const { userId, email, name, phone, placedOrderIds } = userCtx;
+    const { userId, email, name, phone } = userCtx;
 
     // Require authentication: user must be signed in to place an order
     if (!userId) {
@@ -130,6 +105,11 @@ export async function POST(req: NextRequest) {
       } else if (body.newAddress?.fullName && body.newAddress?.addressLine1) {
         // Auto-create address record from body
         const newAddrId = crypto.randomUUID();
+        const pin = String(body.newAddress.pincode || "").trim();
+        const resolved = pin ? resolvePincode(pin) : null;
+        const resolvedCity = String(body.newAddress.city || resolved?.city || "").trim();
+        const resolvedState = String(body.newAddress.state || resolved?.state || "").trim();
+
         const createAddrRes = await fetch(`${SUPABASE_URL}/rest/v1/Address`, {
           method: "POST",
           headers: getHeaders(),
@@ -139,9 +119,9 @@ export async function POST(req: NextRequest) {
             fullName: String(body.newAddress.fullName).trim(),
             phone: String(body.newAddress.phone || phone || "9999999999").trim(),
             addressLine1: String(body.newAddress.addressLine1).trim(),
-            city: String(body.newAddress.city || "Sitapur").trim(),
-            state: String(body.newAddress.state || "Punjab").trim(),
-            pincode: String(body.newAddress.pincode || "261001").trim(),
+            city: resolvedCity || "Local Delivery",
+            state: resolvedState || "India",
+            pincode: pin || "110001",
             type: body.newAddress.type || "HOME",
             isDefault: true,
             createdAt: new Date().toISOString(),
@@ -348,9 +328,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Update session placed orders
-    const updatedPlacedIds = Array.from(new Set([...placedOrderIds, orderId, orderNumber]));
-
     const response = NextResponse.json(
       {
         success: true,
@@ -363,11 +340,10 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
 
-    // Save placed order id to cookie for secure browser continuity
-    response.cookies.set("medico_placed_order_ids", JSON.stringify(updatedPlacedIds), {
+    // Clear legacy placed orders cookie from browser
+    response.cookies.set("medico_placed_order_ids", "", {
       path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
+      maxAge: 0,
     });
 
     return response;

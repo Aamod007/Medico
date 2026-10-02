@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
+import { getAuthenticatedUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -182,6 +183,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const order = orders[0];
+    const userCtx = await getAuthenticatedUser(req);
+    if (!userCtx.userId || order.userId !== userCtx.userId) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized: You do not have access to view this invoice." },
+        { status: 403 }
+      );
+    }
     const pdfBuffer = buildInvoicePdfBuffer(order);
     const safeOrderNum = (order.orderNumber || order.id).replace(/[^a-zA-Z0-9_-]/g, "");
 

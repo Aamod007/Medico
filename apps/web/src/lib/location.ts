@@ -80,8 +80,9 @@ export function resolvePincode(pin: string): {
  * Detect user's approximate location.
  * Strategy:
  *   1. Try browser GPS (works on mobile / location-enabled desktop)
- *   2. Fall back to IP-based detection via our server API
- *   3. Return empty result (no hardcoded default) — user must choose manually
+ *   2. Try direct client IP lookup (most accurate client IP on desktop)
+ *   3. Fall back to server-side IP detection via /api/location/detect
+ *   4. Return empty result (no hardcoded default) — user can pick manually
  */
 export async function detectUserLocation(): Promise<LocationResult> {
   if (typeof window === "undefined") {
@@ -95,7 +96,7 @@ export async function detectUserLocation(): Promise<LocationResult> {
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve(pos.coords),
           (err) => reject(err),
-          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 120000 }
         );
       });
 
@@ -113,7 +114,45 @@ export async function detectUserLocation(): Promise<LocationResult> {
     }
   }
 
-  // 2. IP-based detection — works on desktop without GPS
+  // 2. Direct client browser IP detection (fast, CORS-enabled, sees actual client public IP)
+  try {
+    const ipRes = await fetch("https://ipwho.is/", {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (ipRes.ok) {
+      const ipData = await ipRes.json();
+      if (ipData?.success && ipData.country_code === "IN") {
+        const pin =
+          ipData.postal && /^\d{6}$/.test(ipData.postal) ? ipData.postal : "";
+        const resolved = pin ? resolvePincode(pin) : { valid: false, city: "", state: "" };
+        const city = resolved.valid
+          ? resolved.city
+          : formatCityName(ipData.city, ipData.region);
+        if (city && pin) {
+          return {
+            success: true,
+            city,
+            pincode: pin,
+            state: resolved.state || ipData.region,
+            source: "ip",
+          };
+        }
+        if (city) {
+          return {
+            success: true,
+            city,
+            pincode: pin || "110001",
+            state: ipData.region,
+            source: "ip",
+          };
+        }
+      }
+    }
+  } catch {
+    // network or blocked — fall through to server route
+  }
+
+  // 3. IP-based detection via our server API
   try {
     const res = await fetch("/api/location/detect");
     if (res.ok) {
@@ -124,7 +163,7 @@ export async function detectUserLocation(): Promise<LocationResult> {
     // network error
   }
 
-  // 3. No fallback — let the user pick manually
+  // 4. No fallback — let the user pick manually
   return {
     success: false,
     city: "",
@@ -133,3 +172,4 @@ export async function detectUserLocation(): Promise<LocationResult> {
     error: "Could not detect your location. Please enter your PIN code or select a city below.",
   };
 }
+

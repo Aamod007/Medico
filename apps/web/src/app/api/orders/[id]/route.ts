@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     const userCtx = await getAuthenticatedUser(req);
-    const { userId, placedOrderIds } = userCtx;
+    const { userId } = userCtx;
 
     // Try finding by UUID id or orderNumber
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
@@ -36,11 +36,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         const order = orders[0];
 
         // STRICT OWNERSHIP CHECK:
-        // The order must belong to the authenticated user, or match the browser's placed order tracking
-        const isOwner =
-          (userId && order.userId === userId) ||
-          placedOrderIds.includes(order.id) ||
-          placedOrderIds.includes(order.orderNumber);
+        // The order must belong to the authenticated user account
+        const isOwner = Boolean(userId && order.userId === userId);
 
         if (!isOwner) {
           return NextResponse.json(

@@ -53,26 +53,12 @@ export async function getAuthenticatedUser(req?: NextRequest): Promise<Authentic
   // Strict user identification: Clerk session takes priority, followed by authenticated cookie/header
   const resolvedUserId = clerkUserId || cookieUserId || headerUserId || null;
 
-  // Track orders explicitly placed during this user's browser sessions
-  const placedOrderIdsRaw = cookieStore.get("medico_placed_order_ids")?.value;
-  let placedOrderIds: string[] = [];
-  if (placedOrderIdsRaw) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(placedOrderIdsRaw));
-      if (Array.isArray(parsed)) {
-        placedOrderIds = parsed.map(String);
-      }
-    } catch {
-      placedOrderIds = placedOrderIdsRaw.split(",").map((s) => s.trim()).filter(Boolean);
-    }
-  }
-
   return {
     userId: resolvedUserId,
     email: clerkEmail,
     name: clerkName,
     phone: clerkPhone,
-    placedOrderIds,
+    placedOrderIds: [],
   };
 }
 

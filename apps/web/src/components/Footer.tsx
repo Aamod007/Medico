@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { PackageCheck, Truck, ShieldCheck, Heart } from "lucide-react";
+import { BRAND_CONFIG } from "@medico/shared";
 
 export default function Footer() {
   return (
@@ -55,7 +56,7 @@ export default function Footer() {
               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#0B4A3A] font-black text-lg">
                 ✚
               </div>
-              <span className="text-2xl font-black text-white">Pharmico</span>
+              <span className="text-2xl font-black text-white">{BRAND_CONFIG.name}</span>
             </div>
             <p className="text-xs text-white/70 leading-relaxed">
               Caring for every age with dignity, warmth, and modern pharmaceutical science. Licensed retail online pharmacy.
@@ -78,7 +79,7 @@ export default function Footer() {
               <li><Link href="/products" className="hover:text-white transition">All Medicines</Link></li>
               <li><Link href="/products?category=vitamins-and-supplements" className="hover:text-white transition">Vitamins & Supplements</Link></li>
               <li><Link href="/products?sort=featured" className="hover:text-white transition">Featured Products</Link></li>
-              <li><Link href="/about" className="hover:text-white transition">About Pharmico</Link></li>
+              <li><Link href="/about" className="hover:text-white transition">About {BRAND_CONFIG.name}</Link></li>
             </ul>
           </div>
 
@@ -99,13 +100,13 @@ export default function Footer() {
           <div>
             <h5 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Contact & License</h5>
             <div className="space-y-2 text-xs text-white/70">
-              <p><strong className="text-white">Helpline:</strong> +91 80 4912 3456</p>
-              <p><strong className="text-white">Email:</strong> support@pharmico.health</p>
-              <p><strong className="text-white">Drug License:</strong> KA-BLR-2024-00129 (Form 20/21)</p>
-              <p><strong className="text-white">GSTIN:</strong> 29AAAAA0000A1Z5</p>
-              <p><strong className="text-white">Pharmacist In-Charge:</strong> Pooja Verma, R.Ph. (Reg: KA-59281-A)</p>
+              <p><strong className="text-white">Helpline:</strong> {BRAND_CONFIG.supportPhone}</p>
+              <p><strong className="text-white">Email:</strong> {BRAND_CONFIG.supportEmail}</p>
+              <p><strong className="text-white">Drug License:</strong> {BRAND_CONFIG.drugLicenseNumber} ({BRAND_CONFIG.drugLicenseForm})</p>
+              <p><strong className="text-white">GSTIN:</strong> {BRAND_CONFIG.gstin}</p>
+              <p><strong className="text-white">Pharmacist In-Charge:</strong> {BRAND_CONFIG.pharmacistInCharge}</p>
               <p className="pt-2 text-[11px] text-white/50">
-                Plot 42, Biotech Innovation Zone, Electronic City Phase 1, Bangalore, Karnataka 560100
+                {BRAND_CONFIG.address.line1}, {BRAND_CONFIG.address.city}, {BRAND_CONFIG.address.state} {BRAND_CONFIG.address.pincode}
               </p>
             </div>
           </div>
@@ -120,7 +121,7 @@ export default function Footer() {
 
         {/* Legal Disclaimer & Copyright */}
         <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
-          <p>© {new Date().getFullYear()} Pharmico Healthcare Private Limited. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {BRAND_CONFIG.legalName}. All rights reserved.</p>
           <p className="flex items-center gap-1.5 text-center text-white/60">
             Certified Online Pharmacy <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
           </p>

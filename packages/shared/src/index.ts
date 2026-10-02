@@ -1,6 +1,37 @@
 import { z } from "zod";
 
 // ============================================================================
+// BRAND CONFIGURATION
+// ============================================================================
+
+export const BRAND_CONFIG = {
+  name: "Pharmico",
+  legalName: "Pharmico Healthcare Private Limited",
+  tagline: "Online Pharmacy & Healthcare Platform",
+  shortDescription: "Order genuine medicines, wellness essentials, and get doorstep delivery within 24–48 hours with guaranteed cold-chain integrity.",
+  supportEmail: "support@pharmico.health",
+  grievanceEmail: "grievance@pharmico.health",
+  privacyEmail: "privacy@pharmico.health",
+  prescriptionsEmail: "prescriptions@pharmico.health",
+  supportPhone: "+91 80 4912 3456",
+  tollFreePhone: "1800-890-4422",
+  drugLicenseNumber: "KA-BLR-2024-00129",
+  drugLicenseForm: "Form 20/21",
+  gstin: "29AAAAA0000A1Z5",
+  pharmacistInCharge: "Pooja Verma, R.Ph. (Reg: KA-59281-A)",
+  operatingHours: "24/7 (Pharmacist available 8 AM - 10 PM IST)",
+  address: {
+    line1: "Plot 42, Biotech Innovation Zone, Electronic City Phase 1",
+    city: "Bangalore",
+    state: "Karnataka",
+    pincode: "560100",
+    country: "India",
+  },
+} as const;
+
+export type BrandConfig = typeof BRAND_CONFIG;
+
+// ============================================================================
 // CONFIGURATION & LOCALE CONSTANTS
 // ============================================================================
 

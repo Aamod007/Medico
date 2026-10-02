@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Headphones,
 } from "lucide-react";
+import { BRAND_CONFIG } from "@medico/shared";
 
 export default function ContactPage() {
   const [name, setName] = useState("");
@@ -57,7 +58,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-white">Customer Support & Helpline</p>
-                    <p className="text-xs text-gray-300 mt-0.5">1800-890-4422 (Toll Free)</p>
+                    <p className="text-xs text-gray-300 mt-0.5">{BRAND_CONFIG.tollFreePhone} (Toll Free) / {BRAND_CONFIG.supportPhone}</p>
                     <p className="text-xs text-emerald-400 font-bold mt-1">24x7 Emergency Assistance</p>
                   </div>
                 </div>
@@ -68,8 +69,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-white">Email Inquiries</p>
-                    <p className="text-xs text-gray-300 mt-0.5">support@pharmico.com</p>
-                    <p className="text-xs text-gray-300">prescriptions@pharmico.com</p>
+                    <p className="text-xs text-gray-300 mt-0.5">{BRAND_CONFIG.supportEmail}</p>
+                    <p className="text-xs text-gray-300">{BRAND_CONFIG.prescriptionsEmail}</p>
                   </div>
                 </div>
 
@@ -80,8 +81,7 @@ export default function ContactPage() {
                   <div>
                     <p className="font-semibold text-white">Fulfillment Hub & Head Office</p>
                     <p className="text-xs text-gray-300 mt-0.5 leading-relaxed">
-                      Pharmico Life Sciences Ltd., Tech Park 4, Bandra Kurla Complex, Mumbai,
-                      Maharashtra 400051
+                      {BRAND_CONFIG.legalName}, {BRAND_CONFIG.address.line1}, {BRAND_CONFIG.address.city}, {BRAND_CONFIG.address.state} {BRAND_CONFIG.address.pincode}
                     </p>
                   </div>
                 </div>
@@ -94,11 +94,10 @@ export default function ContactPage() {
                 <ShieldCheck className="w-4 h-4 text-amber-600" /> Pharmacy License Details
               </h3>
               <p className="leading-relaxed">
-                <strong>Retail Drug License:</strong> MH-MZ2-2024-4901 &bull; Form 20B & 21B
+                <strong>Retail Drug License:</strong> {BRAND_CONFIG.drugLicenseNumber} &bull; {BRAND_CONFIG.drugLicenseForm}
               </p>
               <p className="leading-relaxed mt-1">
-                <strong>Registered Pharmacist on Duty:</strong> Reg No. 194821 / Maharashtra State
-                Pharmacy Council
+                <strong>Registered Pharmacist on Duty:</strong> {BRAND_CONFIG.pharmacistInCharge}
               </p>
             </div>
           </div>

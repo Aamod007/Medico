@@ -903,7 +903,7 @@ export default function HomePage() {
                 className="w-11 h-11 rounded-full object-cover"
               />
               <div>
-                <div className="text-sm font-bold text-[#0F2A22]">David L.</div>
+                <div className="text-sm font-bold text-[#0F2A22]">Rajesh K.</div>
                 <div className="text-xs text-[#5B6B65]">Bangalore</div>
               </div>
             </div>
@@ -923,7 +923,7 @@ export default function HomePage() {
                 className="w-11 h-11 rounded-full object-cover"
               />
               <div>
-                <div className="text-sm font-bold text-[#0F2A22]">Michael R.</div>
+                <div className="text-sm font-bold text-[#0F2A22]">Dr. Ananya Sen</div>
                 <div className="text-xs text-[#5B6B65]">Mumbai</div>
               </div>
             </div>
@@ -943,7 +943,7 @@ export default function HomePage() {
                 className="w-11 h-11 rounded-full object-cover"
               />
               <div>
-                <div className="text-sm font-bold text-[#0F2A22]">Sarah M.</div>
+                <div className="text-sm font-bold text-[#0F2A22]">Priya Sharma</div>
                 <div className="text-xs text-[#5B6B65]">Hyderabad</div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -31,6 +31,7 @@ import { useWishlistStore } from "@/lib/wishlist-store";
 import { api } from "@/lib/api";
 import { resolvePincode } from "@/lib/location";
 import { SignInButton, Show, UserButton } from "@clerk/nextjs";
+import { BRAND_CONFIG } from "@medico/shared";
 
 export default function Header() {
   const router = useRouter();
@@ -243,7 +244,7 @@ export default function Header() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
               <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white group-hover:opacity-95 transition">
-                Pharmico
+                {BRAND_CONFIG.name}
               </span>
             </Link>
 

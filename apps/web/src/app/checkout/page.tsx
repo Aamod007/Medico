@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { api } from "@/lib/api";
+import { BRAND_CONFIG } from "@medico/shared";
 
 declare global {
   interface Window {
@@ -174,10 +175,10 @@ export default function CheckoutPage() {
 
       // Open Razorpay Modal
       const options = {
-        key: keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_TiWDGQAMVvys6R",
+        key: keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
         amount,
         currency: currency || "INR",
-        name: "Pharmico Healthcare",
+        name: BRAND_CONFIG.legalName,
         description: `Order #${order.orderNumber}`,
         order_id: razorpayOrderId,
         prefill: {

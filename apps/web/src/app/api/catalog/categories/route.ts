@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
+import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
-    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_r00XNR7sSTTpzUEk6_R69Q_0sJo3-ag";
-
+    const { url: supabaseUrl } = getSupabaseConfig();
+    
     const res = await fetch(
       `${supabaseUrl}/rest/v1/Category?isActive=eq.true&order=sortOrder.asc&select=*,products:Product(count)`,
       {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
+        headers: getSupabaseHeaders(),
         cache: "no-store",
       }
     );

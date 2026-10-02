@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,8 @@ export async function GET(
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
-    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_r00XNR7sSTTpzUEk6_R69Q_0sJo3-ag";
-    const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
+    const { url: supabaseUrl } = getSupabaseConfig();
+        const headers = getSupabaseHeaders();
 
     const res = await fetch(
       `${supabaseUrl}/rest/v1/Product?slug=eq.${encodeURIComponent(slug)}&isActive=eq.true&deletedAt=is.null&select=*,category:Category(*),brand:Brand(*),variants:ProductVariant(*,batches:InventoryBatch(*)),reviews:Review(*,user:User(id,name,avatar))`,

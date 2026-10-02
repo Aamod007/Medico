@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +16,11 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
     const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit") || "24")));
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
-    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_r00XNR7sSTTpzUEk6_R69Q_0sJo3-ag";
-
-    const headers = {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
+    const { url: supabaseUrl } = getSupabaseConfig();
+    
+    const headers = getSupabaseHeaders({
       Prefer: "count=exact",
-    };
+    });
 
     // Build PostgREST query parameters
     const queryParts: string[] = [

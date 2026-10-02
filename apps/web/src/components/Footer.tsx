@@ -121,8 +121,8 @@ export default function Footer() {
         {/* Legal Disclaimer & Copyright */}
         <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
           <p>© {new Date().getFullYear()} Pharmico Healthcare Private Limited. All rights reserved.</p>
-          <p className="flex items-center gap-1 text-center">
-            Designed by <span className="text-white font-semibold">Aamod</span> <Heart className="w-3.5 h-3.5 text-[#10B981] fill-current" />
+          <p className="flex items-center gap-1.5 text-center text-white/60">
+            Certified Online Pharmacy <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
           </p>
         </div>
       </div>

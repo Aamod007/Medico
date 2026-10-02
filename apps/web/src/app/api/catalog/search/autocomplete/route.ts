@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,8 @@ export async function GET(req: NextRequest) {
     }
 
     const trimmed = encodeURIComponent(query.trim());
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
-    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_r00XNR7sSTTpzUEk6_R69Q_0sJo3-ag";
-    const headers = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` };
+    const { url: supabaseUrl } = getSupabaseConfig();
+        const headers = getSupabaseHeaders();
 
     const [prodRes, catRes, brandRes] = await Promise.all([
       fetch(

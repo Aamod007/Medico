@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vakxcpryqrsqhviivvmv.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_r00XNR7sSTTpzUEk6_R69Q_0sJo3-ag";
+const { url: SUPABASE_URL } = getSupabaseConfig();
 
 function getHeaders() {
-  return {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
-    "Content-Type": "application/json",
-  };
+  return getSupabaseHeaders();
 }
 
 export async function GET(req: NextRequest) {

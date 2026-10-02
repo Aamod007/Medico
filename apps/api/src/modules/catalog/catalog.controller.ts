@@ -94,20 +94,97 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     };
   }
 
-  // Sorting logic
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  if (sort === "price_asc" || sort === "price_desc") {
+    // True global sorting by variant price across the entire matching catalog
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        brand: { select: { id: true, name: true, slug: true } },
+        category: { select: { id: true, name: true, slug: true } },
+        variants: {
+          where: { isActive: true },
+          include: {
+            batches: {
+              where: {
+                quantity: { gt: 0 },
+                expiryDate: { gt: new Date() },
+                isBlocked: false,
+              },
+              select: { quantity: true, expiryDate: true },
+            },
+          },
+        },
+        reviews: {
+          where: { isApproved: true },
+          select: { rating: true },
+        },
+      },
+    });
+
+    const data = products.map((p) => {
+      const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
+      const totalStock = p.variants.reduce(
+        (acc, v) => acc + v.batches.reduce((bAcc, b) => bAcc + b.quantity, 0),
+        0
+      );
+      const avgRating =
+        p.reviews.length > 0
+          ? p.reviews.reduce((acc, r) => acc + r.rating, 0) / p.reviews.length
+          : 4.8;
+
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        description: p.description,
+        composition: p.composition,
+        images: p.images,
+        prescriptionRequired: p.prescriptionRequired,
+        scheduleType: p.scheduleType,
+        isFeatured: p.isFeatured,
+        isBestSeller: p.isBestSeller,
+        brand: p.brand,
+        category: p.category,
+        defaultVariant,
+        variants: p.variants,
+        totalStock,
+        inStock: totalStock > 0,
+        rating: Number(avgRating.toFixed(1)),
+        reviewCount: p.reviews.length,
+      };
+    });
+
+    if (sort === "price_asc") {
+      data.sort((a, b) => Number(a.defaultVariant?.price || 0) - Number(b.defaultVariant?.price || 0));
+    } else {
+      data.sort((a, b) => Number(b.defaultVariant?.price || 0) - Number(a.defaultVariant?.price || 0));
+    }
+
+    const paginated = data.slice(skip, skip + take);
+
+    res.json({
+      success: true,
+      data: paginated,
+      meta: {
+        page: Number(page),
+        limit: Number(limit),
+        total: data.length,
+        totalPages: Math.ceil(data.length / Number(limit)),
+      },
+    });
+    return;
+  }
+
+  // Non-price sorting (database level)
   let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
-  if (sort === "price_asc") {
-    orderBy = { variants: { _count: "asc" } }; // Handled in mapping or base
-  } else if (sort === "price_desc") {
-    orderBy = { variants: { _count: "desc" } };
-  } else if (sort === "newest") {
+  if (sort === "newest") {
     orderBy = { createdAt: "desc" };
   } else if (sort === "featured") {
     orderBy = { isFeatured: "desc" };
   }
-
-  const skip = (Number(page) - 1) * Number(limit);
-  const take = Number(limit);
 
   const [total, products] = await Promise.all([
     prisma.product.count({ where }),
@@ -140,7 +217,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     }),
   ]);
 
-  // Transform and enrich with calculated ratings & stock
   const data = products.map((p) => {
     const defaultVariant = p.variants.find((v) => v.isDefault) || p.variants[0];
     const totalStock = p.variants.reduce(
@@ -173,12 +249,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       reviewCount: p.reviews.length,
     };
   });
-
-  if (sort === "price_asc") {
-    data.sort((a, b) => Number(a.defaultVariant?.price || 0) - Number(b.defaultVariant?.price || 0));
-  } else if (sort === "price_desc") {
-    data.sort((a, b) => Number(b.defaultVariant?.price || 0) - Number(a.defaultVariant?.price || 0));
-  }
 
   res.json({
     success: true,

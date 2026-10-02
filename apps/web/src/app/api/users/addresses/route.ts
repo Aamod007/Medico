@@ -42,7 +42,21 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const userCtx = await getAuthenticatedUser(req);
-    const { userId, email, name, phone: clerkPhone } = userCtx;
+    let { userId, email, name, phone: clerkPhone } = userCtx;
+
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: "Invalid request payload." },
+        { status: 400 }
+      );
+    }
+
+    if (!userId && body?.userId) {
+      userId = String(body.userId).trim();
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -51,7 +65,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
     const { fullName, phone, addressLine1, addressLine2, landmark, city, state, pincode, type, isDefault } = body;
 
     if (!fullName || !phone || !addressLine1 || !city || !state || !pincode) {
@@ -61,8 +74,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Normalize phone number to standard 10 digits (strip non-digits and leading zeros/prefixes)
+    const rawPhoneDigits = String(phone).replace(/\D/g, "");
+    const cleanPhone = rawPhoneDigits.length >= 10 ? rawPhoneDigits.slice(-10) : rawPhoneDigits;
+
     // Ensure User row exists in DB
-    await ensureUserExistsInDb(userId, email, fullName || name, phone || clerkPhone);
+    await ensureUserExistsInDb(userId, email, fullName || name, cleanPhone || clerkPhone);
 
     const addressId = crypto.randomUUID();
 
@@ -70,7 +87,7 @@ export async function POST(req: NextRequest) {
       id: addressId,
       userId,
       fullName: String(fullName).trim(),
-      phone: String(phone).trim(),
+      phone: cleanPhone || String(phone).trim(),
       addressLine1: String(addressLine1).trim(),
       addressLine2: addressLine2 ? String(addressLine2).trim() : null,
       landmark: landmark ? String(landmark).trim() : null,
@@ -119,9 +136,15 @@ export async function POST(req: NextRequest) {
 
     const errText = await res.text();
     console.error("Address insertion failed:", errText);
+    let detailMsg = "Could not save address to database.";
+    try {
+      const parsedErr = JSON.parse(errText);
+      detailMsg = parsedErr.message || parsedErr.details || parsedErr.hint || detailMsg;
+    } catch {}
+
     return NextResponse.json(
-      { success: false, message: "Could not save address to database." },
-      { status: 500 }
+      { success: false, message: detailMsg },
+      { status: res.status >= 400 && res.status < 600 ? res.status : 500 }
     );
   } catch (error: any) {
     console.error("POST /api/users/addresses error:", error?.message);

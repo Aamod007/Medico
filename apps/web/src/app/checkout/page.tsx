@@ -120,7 +120,13 @@ export default function CheckoutPage() {
     setErrorMessage(null);
     setIsProcessing(true);
     try {
-      const res = await api.post("/users/addresses", newAddress);
+      const cleanPhone = newAddress.phone.replace(/\D/g, "").replace(/^0+/, "").slice(-10);
+      const payload = {
+        ...newAddress,
+        phone: cleanPhone || newAddress.phone,
+        userId: user?.id,
+      };
+      const res = await api.post("/users/addresses", payload);
       if (res.success && res.data) {
         setAddresses((prev) => [...prev, res.data]);
         setSelectedAddressId(res.data.id);
@@ -156,7 +162,13 @@ export default function CheckoutPage() {
         newAddress.pincode.trim()
       ) {
         setIsProcessing(true);
-        const saveRes = await api.post("/users/addresses", newAddress);
+        const cleanPhone = newAddress.phone.replace(/\D/g, "").replace(/^0+/, "").slice(-10);
+        const payload = {
+          ...newAddress,
+          phone: cleanPhone || newAddress.phone,
+          userId: user?.id,
+        };
+        const saveRes = await api.post("/users/addresses", payload);
         if (saveRes.success && saveRes.data?.id) {
           activeAddressId = saveRes.data.id;
           setAddresses((prev) => [...prev, saveRes.data]);
@@ -425,10 +437,15 @@ export default function CheckoutPage() {
                     className="p-2.5 rounded-xl border text-xs bg-white"
                   />
                   <input
-                    type="text"
+                    type="tel"
                     placeholder="10-digit Phone"
                     value={newAddress.phone}
-                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                    maxLength={10}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      const normalized = val.startsWith("0") ? val.replace(/^0+/, "").slice(0, 10) : val.slice(0, 10);
+                      setNewAddress({ ...newAddress, phone: normalized });
+                    }}
                     required
                     className="p-2.5 rounded-xl border text-xs bg-white"
                   />

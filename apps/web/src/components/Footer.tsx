@@ -91,6 +91,7 @@ export default function Footer() {
               <li><Link href="/terms" className="hover:text-white transition">Terms & Conditions</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
               <li><Link href="/contact" className="hover:text-white transition">Customer Support</Link></li>
+              <li><Link href="/admin" className="hover:text-[#10B981] transition font-semibold">Pharmacist Portal</Link></li>
             </ul>
           </div>
 
@@ -100,8 +101,9 @@ export default function Footer() {
             <div className="space-y-2 text-xs text-white/70">
               <p><strong className="text-white">Helpline:</strong> +91 80 4912 3456</p>
               <p><strong className="text-white">Email:</strong> support@pharmico.health</p>
-              <p><strong className="text-white">Drug License:</strong> KA-BLR-2024-00129</p>
+              <p><strong className="text-white">Drug License:</strong> KA-BLR-2024-00129 (Form 20/21)</p>
               <p><strong className="text-white">GSTIN:</strong> 29AAAAA0000A1Z5</p>
+              <p><strong className="text-white">Pharmacist In-Charge:</strong> Pooja Verma, R.Ph. (Reg: KA-59281-A)</p>
               <p className="pt-2 text-[11px] text-white/50">
                 Plot 42, Biotech Innovation Zone, Electronic City Phase 1, Bangalore, Karnataka 560100
               </p>
@@ -109,8 +111,15 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Statutory Medical Disclaimer */}
+        <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 pb-2 text-[11px] text-white/40 leading-relaxed border-b border-white/5">
+          <p>
+            <strong>Statutory Medical Disclaimer:</strong> The information provided on this platform is for informational purposes and does not substitute professional medical advice. Medicines are dispensed strictly under the supervision of a licensed registered pharmacist in compliance with the Drugs and Cosmetics Act, 1940 and Pharmacy Act, 1948. Schedule H, H1, and X drugs will not be sold or dispatched without a verifiable prescription issued by a registered medical practitioner.
+          </p>
+        </div>
+
         {/* Legal Disclaimer & Copyright */}
-        <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
+        <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">
           <p>© {new Date().getFullYear()} Pharmico Healthcare Private Limited. All rights reserved.</p>
           <p className="flex items-center gap-1 text-center">
             Designed by <span className="text-white font-semibold">Aamod</span> <Heart className="w-3.5 h-3.5 text-[#10B981] fill-current" />

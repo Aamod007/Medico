@@ -9,7 +9,7 @@
 | BUG-004 | P2 | Storefront UX | Missing static policy pages for Refund Policy (`/refund`) and Shipping Policy (`/shipping`) | `apps/web/src/app` missing policy routes | OPEN | Scheduled in Phase 2 |
 | BUG-005 | P2 | Pharmacy Compliance | Storefront footer missing mandatory pharmacy disclosures: Drug License Number, GSTIN, and Licensed Pharmacist details | `apps/web/src/components/Footer.tsx` | OPEN | Scheduled in Phase 2 |
 | BUG-006 | P1 | Admin Portal | Admin frontend routes (`/admin`, `/admin/prescriptions`, `/admin/orders`, `/admin/inventory`) missing from Next.js web application | `apps/web/src/app/admin` directory absent | OPEN | Scheduled in Phase 2 |
-| BUG-007 | P0 | Orders / Core API | Prisma interactive transaction 5s default timeout crashed API server with unhandled error on order placement | `apps/api/src/modules/orders/orders.controller.ts:147` | FIXED | `fix(orders): BUG-007 transaction timeout & error handling` |
+| BUG-007 | P0 | Orders / Core API | Prisma interactive transaction 5s default timeout crashed API server with unhandled error on order placement | `apps/api/src/modules/orders/orders.controller.ts:147` | FIXED | `e77b4ed` |
 
 ---
 

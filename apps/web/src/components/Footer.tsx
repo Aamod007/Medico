@@ -92,7 +92,6 @@ export default function Footer() {
               <li><Link href="/terms" className="hover:text-white transition">Terms & Conditions</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
               <li><Link href="/contact" className="hover:text-white transition">Customer Support</Link></li>
-              <li><Link href="/admin" className="hover:text-[#10B981] transition font-semibold">Pharmacist Portal</Link></li>
             </ul>
           </div>
 
@@ -112,12 +111,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Statutory Medical Disclaimer */}
-        <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 pb-2 text-[11px] text-white/40 leading-relaxed border-b border-white/5">
-          <p>
-            <strong>Statutory Medical Disclaimer:</strong> The information provided on this platform is for informational purposes and does not substitute professional medical advice. Medicines are dispensed strictly under the supervision of a licensed registered pharmacist in compliance with the Drugs and Cosmetics Act, 1940 and Pharmacy Act, 1948. Schedule H, H1, and X drugs will not be sold or dispatched without a verifiable prescription issued by a registered medical practitioner.
-          </p>
-        </div>
 
         {/* Legal Disclaimer & Copyright */}
         <div className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/50">

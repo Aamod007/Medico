@@ -125,6 +125,7 @@ Executed on Playwright Chromium (1.7m total run):
 | BUG-015 | P1 | Invariants | Reconciled coupon `usedCount` with actual completed order foreign keys. |
 | BUG-016 | P1 | Storefront | Purged stale `.next` chunk cache on dev server to restore React client hydration. |
 | BUG-017 | P2 | Testing | Awaited popstate navigation in Playwright J3 URL synchronization test. |
+| BUG-018 | P0 | Deployment | Built Next.js serverless route handlers for `/api/users/addresses`, `/orders`, `/payments`, and `/substitutes` to fix Vercel HTTP 404s. |
 
 ---
 

@@ -20,6 +20,7 @@
 | BUG-015 | P1 | Invariants / Coupons | C8 Coupon usage count desynchronization with historical completed orders | `Coupon.usedCount` mismatched actual order usages | FIXED | Root fix |
 | BUG-016 | P1 | Storefront Build | Next.js dev server stale chunk cache caused 404s on client scripts, breaking React hydration | `.next` chunk cache stale on port 3000 | FIXED | Root fix |
 | BUG-017 | P2 | Storefront E2E | Playwright J3 URL synchronization test failed due to un-awaited browser back navigation | `tests/e2e/j3-listing.spec.ts:40` | FIXED | Root fix |
+| BUG-018 | P0 | Vercel Deployment | Missing serverless route handlers for `/api/users/addresses`, `/api/orders`, `/api/payments/*`, `/api/catalog/products/[slug]/substitutes` caused HTTP 404 on Vercel deployment | `apps/web/src/app/api` missing endpoints | FIXED | `apps/web/src/app/api/*` |
 
 ---
 
@@ -204,4 +205,22 @@
 - **Root Cause**: Single-page application history transition is asynchronous; Playwright's `expect(page.url())` did not await the URL update.
 - **Fix**: Added `await page.waitForURL(/category=diabetes-care/)` and `await page.waitForLoadState("domcontentloaded")`. Test passes consistently.
 - **Status**: FIXED
+
+### BUG-018: Missing Serverless API Handlers on Vercel Caused HTTP 404 on /api/users/addresses, /orders, and /payments
+- **Severity**: P0
+- **Area**: Production Deployment / Next.js Serverless API
+- **Steps to reproduce**: On deployed Vercel site (`https://medico-aamod.vercel.app`), go to `/checkout` and save a new address (`POST /api/users/addresses`) or place an order.
+- **Expected**: Address saved with HTTP 201 and order created successfully in Supabase.
+- **Actual**: Vercel returned `HTTP 404 Not Found` because Next.js route handlers existed only for `/api/cart`, `/api/catalog`, and `/api/coupons`, but `/api/users/addresses`, `/api/orders`, `/api/payments/*`, and `/api/catalog/products/[slug]/substitutes` were missing.
+- **Root Cause**: `apps/web/src/app/api` lacked serverless route handlers for user addresses, orders, payment creation/verification, and product substitutes. When deployed to Vercel without an external API host, client calls fell back to `/api` routes that did not exist.
+- **Fix**: Built full suite of serverless Next.js App Router route handlers:
+  - `apps/web/src/app/api/users/addresses/route.ts` (GET & POST)
+  - `apps/web/src/app/api/orders/route.ts` (GET & POST)
+  - `apps/web/src/app/api/orders/[id]/route.ts` (GET)
+  - `apps/web/src/app/api/orders/[id]/cancel/route.ts` (POST)
+  - `apps/web/src/app/api/payments/create-order/route.ts` (POST)
+  - `apps/web/src/app/api/payments/verify/route.ts` (POST)
+  - `apps/web/src/app/api/catalog/products/[slug]/substitutes/route.ts` (GET)
+- **Status**: FIXED
+
 

@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Tag,
   ArrowRight,
-  ShieldCheck,
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { api } from "@/lib/api";
@@ -471,11 +470,6 @@ export default function CheckoutPage() {
               <span>{isProcessing ? "Processing Order..." : `Place Order (₹${finalTotal.toFixed(2)})`}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-
-            <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#5B6B65] pt-1">
-              <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-              <span>Safe & Secure 256-Bit SSL Checkout</span>
-            </div>
           </div>
         </div>
       </div>

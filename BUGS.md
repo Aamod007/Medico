@@ -88,3 +88,36 @@
   - Added sequential 1-minute timestamp increments to all `statusHistory` entries.
   - Created 5 historical completed orders linked to `MAXUSED` and synced `WELCOME50.usedCount`.
 - **Status**: FIXED
+
+### BUG-020: Could not save address to database due to one_default_address unique constraint
+- **Severity**: P1
+- **Area**: Checkout / Delivery Address / PostgreSQL Invariant
+- **Steps to reproduce**:
+  1. Go to `/checkout` as an authenticated user.
+  2. Add an address with `isDefault: true` when a default address already exists in the database.
+- **Expected**: Address is saved cleanly and marked as default, with previous default addresses updated.
+- **Actual**: API returned 500 with hardcoded `"Could not save address to database."` due to `one_default_address` unique index violation in PostgreSQL (`CREATE UNIQUE INDEX one_default_address ON Address(userId) WHERE (isDefault = true AND deletedAt IS NULL)`).
+- **Fix**:
+  - Added automatic PATCH to demote existing default addresses (`isDefault: false`) prior to inserting a new default address.
+  - Replaced hardcoded swallowed error response with real PostgreSQL/Supabase error messages.
+  - Added input normalization to strip leading zeros and non-digit characters from phone numbers.
+- **Status**: FIXED
+
+### BUG-021: Address foreign key violation (Address_userId_fkey) caused by User table phone/email collision
+- **Severity**: P1
+- **Area**: Authentication / User Provisioning / Address Foreign Key
+- **Steps to reproduce**:
+  1. Sign in with a new Clerk account.
+  2. Enter a phone number in the checkout address form that was already registered in the DB by an older user.
+  3. Click "Save Address".
+- **Expected**: Delivery address is saved and linked to the authenticated user.
+- **Actual**: `insert or update on table "Address" violates foreign key constraint "Address_userId_fkey"`.
+- **Root Cause**:
+  - `ensureUserExistsInDb` attempted to create a `User` record using the entered phone number.
+  - PostgreSQL enforced `CREATE UNIQUE INDEX "User_phone_key" ON "User"(phone)` and rejected user creation with a 409 conflict.
+  - Because user creation failed, the `User` record never existed in the database, causing the subsequent `Address` insert to fail the foreign key reference.
+- **Fix**:
+  - Updated `ensureUserExistsInDb` in `server-auth.ts` to detect existing phone/email claims across user records.
+  - Generated deterministic synthetic fallback identifiers for the internal `User` record when collisions occur, while preserving the customer's actual input phone in `Address.phone`.
+  - Added pre-flight check in `POST /api/users/addresses` to verify user existence before attempting address insertion.
+- **Status**: FIXED

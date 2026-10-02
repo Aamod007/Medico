@@ -25,3 +25,4 @@ logs
 .env*.local
 test-artifacts/
 playwright-report/
+scratch/

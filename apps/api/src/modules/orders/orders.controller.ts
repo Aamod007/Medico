@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import prisma from "../../lib/prisma";
 import { CreateOrderInput, CURRENCY_CONFIG } from "@medico/shared";
 import { InventoryService } from "../inventory/inventory.service";
@@ -6,19 +6,21 @@ import { InvoiceService } from "./invoice.service";
 
 export async function createOrder(
   req: Request<{}, {}, CreateOrderInput>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> {
-  const userId = req.user!.userId;
-  const { addressId, paymentMethod, prescriptionId, couponCode, deliverySlot, notes } = req.body;
+  try {
+    const userId = req.user!.userId;
+    const { addressId, paymentMethod, prescriptionId, couponCode, deliverySlot, notes } = req.body;
 
-  // 1. Validate delivery address
-  const address = await prisma.address.findFirst({
-    where: { id: addressId, userId },
-  });
-  if (!address) {
-    res.status(404).json({ success: false, message: "Delivery address not found" });
-    return;
-  }
+    // 1. Validate delivery address
+    const address = await prisma.address.findFirst({
+      where: { id: addressId, userId },
+    });
+    if (!address) {
+      res.status(404).json({ success: false, message: "Delivery address not found" });
+      return;
+    }
 
   // 2. Fetch User's Cart
   let cart = await prisma.cart.findUnique({
@@ -208,6 +210,9 @@ export async function createOrder(
     await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
     return newOrder;
+  }, {
+    maxWait: 15000,
+    timeout: 30000,
   });
 
   res.status(201).json({
@@ -215,182 +220,204 @@ export async function createOrder(
     message: "Order placed successfully",
     data: order,
   });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function getUserOrders(req: Request, res: Response): Promise<void> {
-  const userId = req.user!.userId;
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+export async function getUserOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-  const [total, orders] = await Promise.all([
-    prisma.order.count({ where: { userId } }),
-    prisma.order.findMany({
-      where: { userId },
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
+    const [total, orders] = await Promise.all([
+      prisma.order.count({ where: { userId } }),
+      prisma.order.findMany({
+        where: { userId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          items: true,
+          address: true,
+          prescription: { select: { id: true, fileUrl: true, status: true } },
+        },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: orders,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getOrderById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const orderId = req.params.id;
+
+    const whereClause: any = {
+      OR: [{ id: orderId }, { orderNumber: orderId }],
+    };
+    if (userRole === "CUSTOMER" && userId) {
+      whereClause.userId = userId;
+    }
+
+    const order = await prisma.order.findFirst({
+      where: whereClause,
+      include: {
+        items: {
+          include: {
+            variant: {
+              include: { product: true },
+            },
+          },
+        },
+        address: true,
+        prescription: true,
+        statusHistory: {
+          orderBy: { createdAt: "asc" },
+        },
+        payments: true,
+        refunds: true,
+      },
+    });
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelOrder(req: Request<{ id: string }, {}, { reason: string }>, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user!.userId;
+    const orderId = req.params.id;
+    const { reason } = req.body;
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    if (order.status !== "PLACED" && order.status !== "CONFIRMED") {
+      res.status(400).json({
+        success: false,
+        message: `Cannot cancel an order with status '${order.status}'. Please contact customer support.`,
+      });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Restore inventory stock
+      for (const item of order.items) {
+        await InventoryService.restoreStock(tx, item.variantId, item.quantity);
+      }
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: "CANCELLED",
+          cancelReason: reason,
+          statusHistory: {
+            create: {
+              status: "CANCELLED",
+              note: `Cancelled by customer. Reason: ${reason}`,
+              changedByUserId: userId,
+            },
+          },
+        },
+      });
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
+    });
+
+    res.json({ success: true, message: "Order cancelled successfully and stock restored." });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function downloadInvoice(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+    const orderId = req.params.id;
+    const mode = (req.query.mode as string) === "inline" ? "inline" : "attachment";
+
+    const whereClause: any = {
+      OR: [{ id: orderId }, { orderNumber: orderId }],
+    };
+    if (userRole === "CUSTOMER" && userId) {
+      whereClause.userId = userId;
+    }
+
+    const order = await prisma.order.findFirst({
+      where: whereClause,
       include: {
         items: true,
         address: true,
-        prescription: { select: { id: true, fileUrl: true, status: true } },
+        user: true,
       },
-    }),
-  ]);
-
-  res.json({
-    success: true,
-    data: orders,
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-  });
-}
-
-export async function getOrderById(req: Request<{ id: string }>, res: Response): Promise<void> {
-  const userId = req.user?.userId;
-  const userRole = req.user?.role;
-  const orderId = req.params.id;
-
-  const whereClause: any = {
-    OR: [{ id: orderId }, { orderNumber: orderId }],
-  };
-  if (userRole === "CUSTOMER" && userId) {
-    whereClause.userId = userId;
-  }
-
-  const order = await prisma.order.findFirst({
-    where: whereClause,
-    include: {
-      items: {
-        include: {
-          variant: {
-            include: { product: true },
-          },
-        },
-      },
-      address: true,
-      prescription: true,
-      statusHistory: {
-        orderBy: { createdAt: "asc" },
-      },
-      payments: true,
-      refunds: true,
-    },
-  });
-
-  if (!order) {
-    res.status(404).json({ success: false, message: "Order not found" });
-    return;
-  }
-
-  res.json({ success: true, data: order });
-}
-
-export async function cancelOrder(req: Request<{ id: string }, {}, { reason: string }>, res: Response): Promise<void> {
-  const userId = req.user!.userId;
-  const orderId = req.params.id;
-  const { reason } = req.body;
-
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, userId },
-    include: { items: true },
-  });
-
-  if (!order) {
-    res.status(404).json({ success: false, message: "Order not found" });
-    return;
-  }
-
-  if (order.status !== "PLACED" && order.status !== "CONFIRMED") {
-    res.status(400).json({
-      success: false,
-      message: `Cannot cancel an order with status '${order.status}'. Please contact customer support.`,
     });
-    return;
-  }
 
-  await prisma.$transaction(async (tx) => {
-    // Restore inventory stock
-    for (const item of order.items) {
-      await InventoryService.restoreStock(tx, item.variantId, item.quantity);
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
     }
 
-    await tx.order.update({
-      where: { id: orderId },
-      data: {
-        status: "CANCELLED",
-        cancelReason: reason,
-        statusHistory: {
-          create: {
-            status: "CANCELLED",
-            note: `Cancelled by customer. Reason: ${reason}`,
-            changedByUserId: userId,
-          },
-        },
+    InvoiceService.generateGSTInvoicePDF(
+      {
+        orderNumber: order.orderNumber,
+        orderDate: order.createdAt,
+        customerName: order.address.fullName,
+        customerPhone: order.address.phone,
+        customerAddress: `${order.address.addressLine1}, ${order.address.addressLine2 ? order.address.addressLine2 + ", " : ""}${order.address.city}, ${order.address.state} - ${order.address.pincode}`,
+        items: order.items.map((i) => ({
+          productName: i.productName,
+          packSize: i.packSize,
+          sku: i.sku,
+          quantity: i.quantity,
+          price: Number(i.price),
+          mrp: Number(i.mrp),
+          gstRate: Number(i.gstRate),
+          subtotal: Number(i.subtotal),
+        })),
+        subtotal: Number(order.subtotal),
+        discount: Number(order.discount),
+        gstAmount: Number(order.gstAmount),
+        deliveryFee: Number(order.deliveryFee),
+        totalAmount: Number(order.totalAmount),
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
       },
-    });
-  });
-
-  res.json({ success: true, message: "Order cancelled successfully and stock restored." });
-}
-
-export async function downloadInvoice(req: Request<{ id: string }>, res: Response): Promise<void> {
-  const userId = req.user?.userId;
-  const userRole = req.user?.role;
-  const orderId = req.params.id;
-  const mode = (req.query.mode as string) === "inline" ? "inline" : "attachment";
-
-  const whereClause: any = {
-    OR: [{ id: orderId }, { orderNumber: orderId }],
-  };
-  if (userRole === "CUSTOMER" && userId) {
-    whereClause.userId = userId;
+      res,
+      mode as "inline" | "attachment"
+    );
+  } catch (error) {
+    next(error);
   }
-
-  const order = await prisma.order.findFirst({
-    where: whereClause,
-    include: {
-      items: true,
-      address: true,
-      user: true,
-    },
-  });
-
-  if (!order) {
-    res.status(404).json({ success: false, message: "Order not found" });
-    return;
-  }
-
-  InvoiceService.generateGSTInvoicePDF(
-    {
-      orderNumber: order.orderNumber,
-      orderDate: order.createdAt,
-      customerName: order.address.fullName,
-      customerPhone: order.address.phone,
-      customerAddress: `${order.address.addressLine1}, ${order.address.addressLine2 ? order.address.addressLine2 + ", " : ""}${order.address.city}, ${order.address.state} - ${order.address.pincode}`,
-      items: order.items.map((i) => ({
-        productName: i.productName,
-        packSize: i.packSize,
-        sku: i.sku,
-        quantity: i.quantity,
-        price: Number(i.price),
-        mrp: Number(i.mrp),
-        gstRate: Number(i.gstRate),
-        subtotal: Number(i.subtotal),
-      })),
-      subtotal: Number(order.subtotal),
-      discount: Number(order.discount),
-      gstAmount: Number(order.gstAmount),
-      deliveryFee: Number(order.deliveryFee),
-      totalAmount: Number(order.totalAmount),
-      paymentMethod: order.paymentMethod,
-      paymentStatus: order.paymentStatus,
-    },
-    res,
-    mode as "inline" | "attachment"
-  );
 }

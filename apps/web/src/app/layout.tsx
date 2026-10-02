@@ -10,14 +10,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Pharmico - Online Pharmacy & Healthcare Platform",
   description:
-    "Order genuine medicines, vitamins, health supplements, OTC wellness products, and book lab tests with doorstep delivery in 24-48 hours.",
+    "Order genuine medicines, vitamins, health supplements, OTC wellness products, with doorstep delivery in 24-48 hours.",
   keywords: [
     "online pharmacy",
     "buy medicines online",
     "health supplements",
     "vitamins",
-    "lab tests online",
-  ],
+      ],
 };
 
 export default function RootLayout({
@@ -26,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col bg-[#F4F6F5] text-[#0F2A22] antialiased">
+    <html lang="en" className="overflow-x-hidden">
+      <body className="min-h-screen flex flex-col bg-[#F4F6F5] text-[#0F2A22] antialiased overflow-x-hidden">
         <ClerkProvider
           publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         >

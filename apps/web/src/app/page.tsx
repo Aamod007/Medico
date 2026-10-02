@@ -109,10 +109,6 @@ export default function HomePage() {
       a: "No prescription upload is required! You can browse and order all healthcare products, wellness essentials, daily medicines, and personal care items directly with instant home delivery.",
     },
     {
-      q: "Can I consult a doctor directly through Pharmico?",
-      a: "Yes — Pharmico partners with verified MBBS doctors and specialists across Dermatology, Pediatrics, General Medicine, and more. Book an instant video or audio consultation starting at ₹450. Your digital prescription is generated directly in your Pharmico account and can be used to order medicines immediately — no separate paper needed.",
-    },
-    {
       q: "How do I know the medicines on Pharmico are genuine?",
       a: "Every product on Pharmico is sourced directly from licensed Indian pharmaceutical manufacturers and authorised distributors. We verify batch numbers, check expiry dates using strict FEFO (First Expiry First Out) protocols, and store temperature-sensitive medicines at 2°C–8°C. Our Drug License (KA-BLR-2024-00129) is publicly listed and all orders are reviewed by our in-house licensed pharmacists before dispatch.",
     },
@@ -167,7 +163,7 @@ export default function HomePage() {
 
               {/* Subtitle */}
               <p className="text-sm sm:text-base text-white/85 max-w-xl leading-relaxed">
-                Order genuine medicines, consult licensed doctors online, and get doorstep delivery within 24–48 hours with guaranteed cold-chain integrity.
+                Order genuine medicines, wellness essentials, and get doorstep delivery within 24–48 hours with guaranteed cold-chain integrity.
               </p>
 
               {/* CTA Buttons */}
@@ -541,21 +537,21 @@ export default function HomePage() {
           <div className="bg-[#E6F4B8] rounded-[28px] p-8 xl:p-10 flex flex-col justify-between space-y-6 shadow-sm hover:shadow-md transition">
             <div>
               <span className="text-xs font-bold text-[#0B4A3A] uppercase tracking-wider">
-                Pharmacist Consultations
+                100% Genuine Guarantee
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-[#0B4A3A] mt-2 leading-snug">
-                Get Personalized Advice on your Medications
+                Directly from Certified Manufacturers
               </h3>
               <p className="text-xs sm:text-sm text-[#0B4A3A]/80 mt-2 leading-relaxed">
-                Review interactions, dosage, and generic substitutes with our licensed team.
+                Every strip and bottle is sourced from WHO-GMP certified facilities with verified batch tracking.
               </p>
             </div>
             <div>
               <Link
-                href="/consultations"
+                href="/products"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#0B4A3A] text-white text-xs sm:text-sm font-bold hover:bg-[#07362a] transition shadow-sm"
               >
-                <span>Schedule a Call</span>
+                <span>Shop Medicines</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -565,21 +561,21 @@ export default function HomePage() {
           <div className="bg-[#FDE6D3] rounded-[28px] p-8 xl:p-10 flex flex-col justify-between space-y-6 shadow-sm hover:shadow-md transition">
             <div>
               <span className="text-xs font-bold text-[#8A4A1C] uppercase tracking-wider">
-                Walk-ins / Home Pickup
+                Express Cold-Chain
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-[#8A4A1C] mt-2 leading-snug">
-                Stay Protected All Year — Book Lab Tests
+                Safe 2°C - 8°C Temperature Control
               </h3>
               <p className="text-xs sm:text-sm text-[#8A4A1C]/80 mt-2 leading-relaxed">
-                Complete blood work, diabetes profiles & lipid panels with doorstep phlebotomist.
+                Insulated thermal packaging with ice gel packs for sensitive medicines and fast metro delivery.
               </p>
             </div>
             <div>
               <Link
-                href="/lab-tests"
+                href="/products"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#8A4A1C] text-white text-xs sm:text-sm font-bold hover:bg-[#6e3914] transition shadow-sm"
               >
-                <span>Book Appointment</span>
+                <span>Order Essentials</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -589,21 +585,21 @@ export default function HomePage() {
           <div className="bg-[#DCEBFA] rounded-[28px] p-8 xl:p-10 flex flex-col justify-between space-y-6 shadow-sm hover:shadow-md transition">
             <div>
               <span className="text-xs font-bold text-[#1C4D8A] uppercase tracking-wider">
-                Available 7 Days a Week
+                Pocket-Friendly Health
               </span>
               <h3 className="text-xl sm:text-2xl font-black text-[#1C4D8A] mt-2 leading-snug">
-                Talk to a Verified Healthcare Provider
+                Save Up To 70% With Generic Substitutes
               </h3>
               <p className="text-xs sm:text-sm text-[#1C4D8A]/80 mt-2 leading-relaxed">
-                Consult top specialists in Dermatology, Pediatrics, and General Medicine starting ₹450.
+                Find high-quality bio-equivalent generic medicines sharing identical active therapeutic salts.
               </p>
             </div>
             <div>
               <Link
-                href="/consultations"
+                href="/products"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#1C4D8A] text-white text-xs sm:text-sm font-bold hover:bg-[#143967] transition shadow-sm"
               >
-                <span>Book Appointment</span>
+                <span>Explore Generics</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>

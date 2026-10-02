@@ -18,11 +18,6 @@ export const getDashboardStats = async (_req: Request, res: Response, next: Next
 
     const totalRevenue = revenueAgg._sum.totalAmount || 0;
 
-    // Prescriptions pending review
-    const pendingPrescriptionsCount = await prisma.prescription.count({
-      where: { status: "PENDING" },
-    });
-
     // Recent 10 orders
     const recentOrders = await prisma.order.findMany({
       take: 10,
@@ -63,7 +58,6 @@ export const getDashboardStats = async (_req: Request, res: Response, next: Next
         totalOrders,
         totalCustomers,
         totalProducts,
-        pendingPrescriptionsCount,
         recentOrders,
         lowStockBatches,
         statusCounts: statusCounts.map((s) => ({ status: s.status, count: s._count.status })),
@@ -171,61 +165,6 @@ export const updateOrderStatus = async (req: Request, res: Response, next: NextF
   }
 };
 
-export const getAllPrescriptions = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { status } = req.query;
-    const where: any = {};
-    if (status && status !== "ALL") {
-      where.status = String(status);
-    }
-
-    const prescriptions = await prisma.prescription.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        orders: { select: { id: true, orderNumber: true, totalAmount: true } },
-      },
-    });
-
-    res.json({ success: true, data: prescriptions });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const reviewPrescription = async (req: any, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const { status, rejectionReason, notes } = req.body;
-    const reviewerId = req.user?.id;
-
-    if (!["APPROVED", "REJECTED"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Status must be APPROVED or REJECTED" });
-    }
-
-    const updated = await prisma.prescription.update({
-      where: { id },
-      data: {
-        status,
-        rejectionReason: status === "REJECTED" ? rejectionReason : null,
-        notes,
-        reviewedAt: new Date(),
-        reviewedByPharmacistId: reviewerId,
-      },
-      include: { user: true },
-    });
-
-    res.json({
-      success: true,
-      message: `Prescription ${status.toLowerCase()} successfully`,
-      data: updated,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getInventoryBatches = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, lowStockOnly } = req.query;
@@ -252,7 +191,6 @@ export const getInventoryBatches = async (req: Request, res: Response, next: Nex
                 id: true,
                 name: true,
                 slug: true,
-                prescriptionRequired: true,
                 brand: { select: { name: true } },
               },
             },

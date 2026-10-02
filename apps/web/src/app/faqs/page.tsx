@@ -54,20 +54,8 @@ const FAQS_DATA: FAQ[] = [
     answer:
       "Unopened medicines in their original tamper-evident packaging can be returned within 7 days of delivery if the item is damaged, defective, or incorrect. Due to safety regulations, temperature-controlled products and opened bottles cannot be returned.",
   },
-  {
-    id: "q7",
-    category: "Diagnostics & Doctors",
-    question: "How does doorstep lab sample collection work?",
-    answer:
-      "A certified, vaccinated phlebotomist visits your registered address at your scheduled time slot with pre-sterilized vacuum tubes. Blood/urine samples are immediately placed in a portable refrigerated carrier and transferred to our NABL-accredited diagnostic partner.",
-  },
-  {
-    id: "q8",
-    category: "Diagnostics & Doctors",
-    question: "Are telehealth consultations with doctors secure and confidential?",
-    answer:
-      "Yes. All video and audio consultations take place over end-to-end encrypted rooms adhering to the Telemedicine Practice Guidelines issued by the Medical Council of India (MCI) and MoHFW.",
-  },
+  
+  
 ];
 
 export default function FaqsPage() {
@@ -75,7 +63,7 @@ export default function FaqsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({ q1: true });
 
-  const categories = ["ALL", "Ordering & Medicines", "Delivery & Tracking", "Payments & Refunds", "Diagnostics & Doctors"];
+  const categories = ["ALL", "Ordering & Medicines", "Delivery & Tracking", "Payments & Refunds"];
 
   const toggleAccordion = (id: string) => {
     setOpenIds((prev) => ({ ...prev, [id]: !prev[id] }));

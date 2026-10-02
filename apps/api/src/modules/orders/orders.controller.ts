@@ -11,7 +11,7 @@ export async function createOrder(
 ): Promise<void> {
   try {
     const userId = req.user!.userId;
-    const { addressId, paymentMethod, prescriptionId, couponCode, deliverySlot, notes } = req.body;
+    const { addressId, paymentMethod, couponCode, deliverySlot, notes } = req.body;
 
     // 1. Validate delivery address
     const address = await prisma.address.findFirst({
@@ -77,19 +77,6 @@ export async function createOrder(
   if (!cart || cart.items.length === 0) {
     res.status(400).json({ success: false, message: "Your cart is empty" });
     return;
-  }
-
-  // 3. Optional prescription attachment (non-blocking)
-
-
-  if (prescriptionId) {
-    const rx = await prisma.prescription.findFirst({
-      where: { id: prescriptionId, userId },
-    });
-    if (!rx) {
-      res.status(404).json({ success: false, message: "Specified prescription not found" });
-      return;
-    }
   }
 
   // 4. Server-Side Price & Tax Recomputation (Never trust client prices)
@@ -173,7 +160,6 @@ export async function createOrder(
         totalAmount,
         paymentMethod,
         paymentStatus: paymentMethod === "COD" ? "PENDING" : "PENDING",
-        prescriptionId: prescriptionId || undefined,
         couponId: appliedCouponId || undefined,
         deliverySlot,
         notes,
@@ -242,7 +228,6 @@ export async function getUserOrders(req: Request, res: Response, next: NextFunct
         include: {
           items: true,
           address: true,
-          prescription: { select: { id: true, fileUrl: true, status: true } },
         },
       }),
     ]);
@@ -286,7 +271,6 @@ export async function getOrderById(req: Request<{ id: string }>, res: Response, 
           },
         },
         address: true,
-        prescription: true,
         statusHistory: {
           orderBy: { createdAt: "asc" },
         },

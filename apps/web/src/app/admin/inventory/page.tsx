@@ -16,7 +16,7 @@ interface BatchItem {
   variant?: {
     sku: string;
     name: string;
-    product?: { name: string; prescriptionRequired: boolean };
+    product?: { name: string };
   };
 }
 

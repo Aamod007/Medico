@@ -368,7 +368,7 @@ export default function Header() {
           </div>
 
           {/* Center: Search Bar Pill with Active Complimentary Categories Dropdown */}
-          <div ref={searchRef} className="hidden md:flex flex-1 max-w-2xl xl:max-w-3xl 2xl:max-w-4xl relative mx-2 lg:mx-4">
+          <div ref={searchRef} className="hidden lg:flex flex-1 max-w-2xl xl:max-w-3xl 2xl:max-w-4xl relative mx-2 lg:mx-4">
             <form
               onSubmit={handleSearchSubmit}
               className="flex items-center w-full bg-white rounded-full px-4 py-2 sm:py-2.5 shadow-sm text-sm border border-transparent focus-within:ring-2 focus-within:ring-[#10B981] transition"
@@ -721,20 +721,6 @@ export default function Header() {
               className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
             >
               <span>Vitamins & Daily</span>
-            </Link>
-            <Link
-              href="/lab-tests"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
-            >
-              <span>Book Lab Tests</span>
-            </Link>
-            <Link
-              href="/consultations"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-3 rounded-xl bg-[#F4F6F5] hover:bg-[#FAF3EA] text-[#0F2A22] font-semibold flex items-center justify-between transition"
-            >
-              <span>Doctor Consult</span>
             </Link>
           </div>
 

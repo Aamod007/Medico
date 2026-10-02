@@ -13,10 +13,7 @@ export function useAuthGuard() {
 
   function guardCart<T extends (...args: any[]) => any>(fn: T): T {
     return ((...args: Parameters<T>) => {
-      if (!isSignedIn) {
-        openAuthModal("cart");
-        return;
-      }
+      // Allow guest shoppers to add to cart and merge upon checkout/login
       return fn(...args);
     }) as T;
   }

@@ -50,27 +50,6 @@ enum PaymentMethod {
   COD
 }
 
-enum PrescriptionStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum AppointmentStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum LabBookingStatus {
-  SCHEDULED
-  SAMPLE_COLLECTED
-  PROCESSING
-  COMPLETED
-  CANCELLED
-}
-
 enum DiscountType {
   PERCENTAGE
   FLAT
@@ -78,7 +57,6 @@ enum DiscountType {
 
 enum NotificationType {
   ORDER
-  PRESCRIPTION
   PAYMENT
   PROMO
   SYSTEM
@@ -112,13 +90,9 @@ model User {
   // Relations
   addresses       Address[]
   orders          Order[]
-  prescriptions   Prescription[]      @relation("CustomerPrescriptions")
-  approvedRx      Prescription[]      @relation("PharmacistApprovals")
   reviews         Review[]
   cart            Cart?
   wishlist        Wishlist[]
-  labBookings     LabBooking[]
-  appointments    Appointment[]
   notifications   Notification[]
   auditLogs       AuditLog[]
   statusUpdates   OrderStatusHistory[]
@@ -146,7 +120,6 @@ model Address {
 
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders       Order[]
-  labBookings  LabBooking[]
 
   @@index([userId])
   @@index([pincode])
@@ -195,17 +168,15 @@ model Product {
   name                String
   slug                String           @unique
   description         String
-  composition         String?          // e.g. "Paracetamol 500mg, Caffeine 30mg"
+  composition         String?          // Active chemical / salt composition
   uses                String?          // Indications/Usage
   sideEffects         String?          // Common adverse reactions
   dosage              String?          // Dosage instructions
-  storageInstructions String?          // Storage conditions (e.g. "Store below 25C")
+  storageInstructions String?          // Storage conditions
   manufacturer        String
   countryOfOrigin     String           @default("India")
   hsnCode             String           @default("300490")
   gstRate             Decimal          @default(12.0) @db.Decimal(5, 2)
-  prescriptionRequired Boolean         @default(false)
-  scheduleType        String?          // Schedule H, H1, X, or OTC
   brandId             String
   categoryId          String
   images              String[]         @default([])
@@ -227,7 +198,6 @@ model Product {
   @@index([brandId])
   @@index([isFeatured])
   @@index([isBestSeller])
-  @@index([prescriptionRequired])
   @@index([isActive])
 }
 
@@ -332,9 +302,9 @@ model Coupon {
   code          String       @unique
   description   String
   discountType  DiscountType @default(PERCENTAGE)
-  discountValue Decimal      @db.Decimal(10, 2) // Percentage or flat rupees
+  discountValue Decimal      @db.Decimal(10, 2)
   minOrderValue Decimal      @default(0) @db.Decimal(10, 2)
-  maxDiscount   Decimal?     @db.Decimal(10, 2) // Cap on percentage discount
+  maxDiscount   Decimal?     @db.Decimal(10, 2)
   usageLimit    Int          @default(1000)
   usedCount     Int          @default(0)
   startDate     DateTime     @default(now())
@@ -366,7 +336,6 @@ model Order {
   totalAmount    Decimal              @db.Decimal(10, 2)
   paymentMethod  PaymentMethod        @default(RAZORPAY)
   paymentStatus  PaymentStatus        @default(PENDING)
-  prescriptionId String?
   couponId       String?
   deliverySlot   String?
   notes          String?
@@ -378,7 +347,6 @@ model Order {
 
   user           User                 @relation(fields: [userId], references: [id])
   address        Address              @relation(fields: [addressId], references: [id])
-  prescription   Prescription?        @relation(fields: [prescriptionId], references: [id])
   coupon         Coupon?              @relation(fields: [couponId], references: [id])
   items          OrderItem[]
   statusHistory  OrderStatusHistory[]
@@ -462,7 +430,7 @@ model Refund {
   razorpayRefundId  String?  @unique
   amount            Decimal  @db.Decimal(10, 2)
   reason            String
-  status            String   @default("PENDING") // PENDING, PROCESSED, FAILED
+  status            String   @default("PENDING")
   initiatedByUserId String
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -473,34 +441,6 @@ model Refund {
   @@index([orderId])
   @@index([paymentId])
   @@index([razorpayRefundId])
-}
-
-// ============================================================================
-// PRESCRIPTIONS (PHARMACY COMPLIANCE)
-// ============================================================================
-
-model Prescription {
-  id                     String             @id @default(uuid())
-  userId                 String
-  fileUrl                String
-  fileType               String             // image/jpeg, image/png, application/pdf
-  originalName           String
-  fileSize               Int
-  status                 PrescriptionStatus @default(PENDING)
-  rejectionReason        String?
-  reviewedByPharmacistId String?
-  reviewedAt             DateTime?
-  notes                  String?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-
-  user                   User               @relation("CustomerPrescriptions", fields: [userId], references: [id], onDelete: Cascade)
-  reviewedBy             User?              @relation("PharmacistApprovals", fields: [reviewedByPharmacistId], references: [id])
-  orders                 Order[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([reviewedByPharmacistId])
 }
 
 // ============================================================================
@@ -528,118 +468,6 @@ model Review {
 }
 
 // ============================================================================
-// LAB TESTS & BOOKINGS
-// ============================================================================
-
-model LabTest {
-  id             String       @id @default(uuid())
-  name           String
-  slug           String       @unique
-  description    String
-  category       String       // e.g. "Full Body Checkup", "Diabetes", "Thyroid"
-  price          Decimal      @db.Decimal(10, 2)
-  mrp            Decimal      @db.Decimal(10, 2)
-  sampleType     String       // e.g. "Blood", "Urine", "Blood & Urine"
-  fastingRequired Boolean     @default(false)
-  reportTimeHours Int         @default(24)
-  testParameters String[]     @default([])
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  bookings       LabBooking[]
-
-  @@index([slug])
-  @@index([category])
-  @@index([isActive])
-}
-
-model LabBooking {
-  id                   String           @id @default(uuid())
-  bookingNumber        String           @unique // e.g. "LAB-2026-9021"
-  userId               String
-  labTestId            String
-  patientName          String
-  patientAge           Int
-  patientGender        Gender
-  sampleCollectionDate DateTime
-  timeSlot             String           // e.g. "07:00 AM - 08:00 AM"
-  addressId            String
-  status               LabBookingStatus @default(SCHEDULED)
-  reportUrl            String?
-  paymentStatus        PaymentStatus    @default(PENDING)
-  totalAmount          Decimal          @db.Decimal(10, 2)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  labTest              LabTest          @relation(fields: [labTestId], references: [id])
-  address              Address          @relation(fields: [addressId], references: [id])
-
-  @@index([userId])
-  @@index([bookingNumber])
-  @@index([status])
-}
-
-// ============================================================================
-// DOCTORS & ONLINE CONSULTATIONS
-// ============================================================================
-
-model Doctor {
-  id                 String        @id @default(uuid())
-  name               String
-  slug               String        @unique
-  specialization     String        // e.g. "General Physician", "Dermatologist"
-  qualification      String        // e.g. "MBBS, MD (Medicine)"
-  experienceYears    Int
-  registrationNumber String
-  consultationFee    Decimal       @db.Decimal(10, 2)
-  avatar             String?
-  bio                String
-  languages          String[]      @default(["English", "Hindi"])
-  isAvailable        Boolean       @default(true)
-  rating             Decimal       @default(4.8) @db.Decimal(3, 1)
-  reviewCount        Int           @default(120)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-
-  appointments       Appointment[]
-
-  @@index([slug])
-  @@index([specialization])
-  @@index([isAvailable])
-}
-
-model Appointment {
-  id                String            @id @default(uuid())
-  appointmentNumber String            @unique // e.g. "APT-2026-3041"
-  userId            String
-  doctorId          String
-  patientName       String
-  patientAge        Int
-  patientGender     Gender
-  appointmentDate   DateTime
-  timeSlot          String            // e.g. "04:30 PM - 05:00 PM"
-  consultationType  String            @default("VIDEO") // VIDEO, AUDIO
-  videoRoomUrl      String?
-  status            AppointmentStatus @default(SCHEDULED)
-  paymentStatus     PaymentStatus     @default(PENDING)
-  fee               Decimal           @db.Decimal(10, 2)
-  notes             String?
-  prescriptionNotes String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  doctor            Doctor            @relation(fields: [doctorId], references: [id])
-
-  @@index([userId])
-  @@index([doctorId])
-  @@index([appointmentNumber])
-  @@index([status])
-}
-
-// ============================================================================
 // NOTIFICATIONS & AUDIT LOGS
 // ============================================================================
 
@@ -662,8 +490,8 @@ model Notification {
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?
-  action     String   // e.g. "PRESCRIPTION_APPROVED", "ORDER_STATUS_CHANGED"
-  entity     String   // "Order", "Prescription", "Product", "User"
+  action     String   // e.g. "ORDER_STATUS_CHANGED"
+  entity     String   // "Order", "Product", "User"
   entityId   String?
   details    Json?
   ipAddress  String?
@@ -689,7 +517,7 @@ model Banner {
   imageUrl   String
   targetUrl  String   @default("/products")
   buttonText String   @default("Shop Now")
-  position   String   @default("HERO") // HERO, PROMO_LEFT, PROMO_MID, PROMO_RIGHT
+  position   String   @default("HERO")
   isActive   Boolean  @default(true)
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())

@@ -90,7 +90,6 @@ async function getOrCreateCart(userId?: string, sessionId?: string) {
 function calculateCartTotals(items: any[]) {
   let subtotal = 0;
   let mrpTotal = 0;
-  let hasPrescriptionItems = false;
   let totalGst = 0;
 
   const formattedItems = items.map((item) => {
@@ -107,10 +106,6 @@ function calculateCartTotals(items: any[]) {
     subtotal += itemTotal;
     mrpTotal += itemMrpTotal;
     totalGst += itemGst;
-
-    if (item.variant.product.prescriptionRequired) {
-      hasPrescriptionItems = true;
-    }
 
     const availableStock = item.variant.batches.reduce(
       (acc: number, b: any) => acc + b.quantity,
@@ -132,7 +127,6 @@ function calculateCartTotals(items: any[]) {
       subtotal: itemTotal,
       availableStock,
       isOutOfStock: availableStock < item.quantity,
-      prescriptionRequired: item.variant.product.prescriptionRequired,
     };
   });
 
@@ -157,7 +151,6 @@ function calculateCartTotals(items: any[]) {
       0,
       CURRENCY_CONFIG.freeShippingThreshold - subtotal
     ),
-    hasPrescriptionItems,
   };
 }
 

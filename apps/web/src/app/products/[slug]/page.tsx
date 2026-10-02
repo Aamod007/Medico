@@ -27,6 +27,7 @@ export default function ProductDetailPage() {
   const addItem = guardCart(_addItem);
 
   const [product, setProduct] = useState<any>(null);
+  const [substitutes, setSubstitutes] = useState<any[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [checkPincode, setCheckPincode] = useState("");
@@ -44,6 +45,10 @@ export default function ProductDetailPage() {
         const def = res.data.variants?.find((v: any) => v.isDefault) || res.data.variants?.[0];
         setSelectedVariant(def);
         setSelectedImage(res.data.images?.[0] || "");
+        try {
+          const subRes = await api.get('/catalog/products/' + slug + '/substitutes');
+          if (subRes.success && subRes.data) setSubstitutes(subRes.data);
+        } catch(e) {}
       }
       setIsLoading(false);
     }
@@ -256,6 +261,47 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      
+      {/* Generic Substitutes Section */}
+      {substitutes.length > 0 && (
+        <div className="bg-[#FAF3EA] rounded-3xl border border-[#FDE6D3] p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="text-xs font-bold text-[#8A4A1C] uppercase tracking-wider">
+                Pocket-Friendly Generic Substitutes
+              </span>
+              <h3 className="text-lg sm:text-xl font-bold text-[#0F2A22] mt-0.5">
+                Substitutes with Same Active Salt ({product.composition})
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-[#8A4A1C] bg-[#8A4A1C]/10 px-3 py-1 rounded-full self-start">
+              Save up to 70%
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+            {substitutes.map((sub: any) => (
+              <div
+                key={sub.id}
+                className="bg-white rounded-2xl p-4 border border-[#D7DEDB] flex flex-col justify-between space-y-3 shadow-sm hover:shadow transition"
+              >
+                <div>
+                  <span className="text-[10px] font-bold text-[#10B981] uppercase">{sub.brand?.name}</span>
+                  <h4 className="font-bold text-sm text-[#0F2A22] line-clamp-1">{sub.name}</h4>
+                  <p className="text-xs font-bold text-[#0B4A3A] mt-1">₹{sub.defaultVariant?.price || sub.price || 25}</p>
+                </div>
+                <Link
+                  href={"/products/" + sub.slug}
+                  className="w-full text-center py-2 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition"
+                >
+                  Switch & Save
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Medical Specification Tabs */}
       <div className="bg-white rounded-3xl border border-[#D7DEDB] p-4 sm:p-8 space-y-6">

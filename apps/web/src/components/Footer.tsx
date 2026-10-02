@@ -76,8 +76,8 @@ export default function Footer() {
             <h5 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Explore</h5>
             <ul className="space-y-2.5 text-xs text-white/70">
               <li><Link href="/products" className="hover:text-white transition">All Medicines</Link></li>
-              <li><Link href="/lab-tests" className="hover:text-white transition">Book Lab Tests</Link></li>
-              <li><Link href="/consultations" className="hover:text-white transition">Online Doctor Consult</Link></li>
+              <li><Link href="/products?category=vitamins-and-supplements" className="hover:text-white transition">Vitamins & Supplements</Link></li>
+              <li><Link href="/products?sort=featured" className="hover:text-white transition">Featured Products</Link></li>
               <li><Link href="/about" className="hover:text-white transition">About Pharmico</Link></li>
             </ul>
           </div>

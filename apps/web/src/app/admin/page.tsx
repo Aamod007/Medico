@@ -3,31 +3,30 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  FileText,
   ShoppingBag,
   Boxes,
   TrendingUp,
   AlertTriangle,
-  Clock,
   ArrowRight,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 
 interface AdminStats {
   totalOrders: number;
   totalRevenue: number;
-  pendingPrescriptions: number;
   lowStockBatches: number;
   totalCustomers: number;
+  totalProducts: number;
 }
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats>({
     totalOrders: 6,
     totalRevenue: 3420,
-    pendingPrescriptions: 1,
     lowStockBatches: 2,
     totalCustomers: 4,
+    totalProducts: 68,
   });
   const [loading, setLoading] = useState(true);
 
@@ -61,15 +60,15 @@ export default function AdminDashboardPage() {
             </div>
             <h1 className="text-2xl sm:text-3xl font-black">Pharmacist & Admin Command Portal</h1>
             <p className="text-xs text-white/70 mt-1 max-w-xl">
-              Real-time oversight of prescription verification, FEFO batch allocations, fulfillment state transitions, and compliance.
+              Real-time oversight of catalog products, FEFO batch allocations, order fulfillment, and compliance.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href="/admin/prescriptions"
+              href="/admin/orders"
               className="px-4 py-2.5 rounded-full bg-[#10B981] text-white text-xs font-bold hover:bg-[#0ea372] transition shadow-sm flex items-center gap-2"
             >
-              <FileText className="w-4 h-4" /> Review Queue ({stats.pendingPrescriptions})
+              <ShoppingBag className="w-4 h-4" /> Manage Orders ({stats.totalOrders})
             </Link>
           </div>
         </div>
@@ -102,13 +101,13 @@ export default function AdminDashboardPage() {
 
           <div className="bg-white p-6 rounded-2xl border border-[#D7DEDB] shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5B6B65]">Pending Rx Queue</span>
-              <div className="w-10 h-10 rounded-full bg-[#FFFBEB] text-amber-600 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5B6B65]">Active Customers</span>
+              <div className="w-10 h-10 rounded-full bg-[#FAF3EA] text-[#0B4A3A] flex items-center justify-center">
+                <Users className="w-5 h-5 text-[#0B4A3A]" />
               </div>
             </div>
-            <div className="text-3xl font-black text-amber-600">{stats.pendingPrescriptions}</div>
-            <p className="text-[11px] text-amber-700 font-medium mt-1">Requires registered pharmacist sign-off</p>
+            <div className="text-3xl font-black text-[#0F2A22]">{stats.totalCustomers}</div>
+            <p className="text-[11px] text-[#5B6B65] mt-1 font-medium">Registered customer accounts</p>
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-[#D7DEDB] shadow-sm">
@@ -124,63 +123,43 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Operational Modules Navigation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            href="/admin/prescriptions"
-            className="group bg-white p-6 rounded-2xl border border-[#D7DEDB] hover:border-[#0B4A3A] transition shadow-sm flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#E6F4B8] text-[#0B4A3A] flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-[#0B4A3A]" />
-              </div>
-              <h3 className="text-lg font-bold text-[#0F2A22] group-hover:text-[#0B4A3A] transition">
-                Prescriptions Review Queue
-              </h3>
-              <p className="text-xs text-[#5B6B65] mt-1.5 leading-relaxed">
-                Review uploaded doctor prescriptions, inspect physician registration credentials, and approve or reject with clinical notes.
-              </p>
-            </div>
-            <div className="mt-6 flex items-center gap-2 text-xs font-bold text-[#0B4A3A] group-hover:translate-x-1 transition">
-              Open Queue <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             href="/admin/orders"
-            className="group bg-white p-6 rounded-2xl border border-[#D7DEDB] hover:border-[#0B4A3A] transition shadow-sm flex flex-col justify-between"
+            className="group bg-white p-8 rounded-2xl border border-[#D7DEDB] hover:border-[#0B4A3A] transition shadow-sm flex flex-col justify-between"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#DCEBFA] text-[#0B4A3A] flex items-center justify-center mb-4">
-                <ShoppingBag className="w-6 h-6 text-[#0B4A3A]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#DCEBFA] text-[#0B4A3A] flex items-center justify-center mb-5">
+                <ShoppingBag className="w-7 h-7 text-[#0B4A3A]" />
               </div>
-              <h3 className="text-lg font-bold text-[#0F2A22] group-hover:text-[#0B4A3A] transition">
-                Orders & Fulfillment Manager
+              <h3 className="text-xl font-bold text-[#0F2A22] group-hover:text-[#0B4A3A] transition">
+                Orders &amp; Fulfillment Manager
               </h3>
-              <p className="text-xs text-[#5B6B65] mt-1.5 leading-relaxed">
-                Track full lifecycle order states: Placed, Confirmed, Packed, Shipped, and Delivered with cold-chain tracking details.
+              <p className="text-sm text-[#5B6B65] mt-2 leading-relaxed">
+                Track full lifecycle order states: Placed, Confirmed, Packed, Shipped, and Delivered with courier partner tracking details and streaming tax invoice PDFs.
               </p>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-xs font-bold text-[#0B4A3A] group-hover:translate-x-1 transition">
+            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-[#0B4A3A] group-hover:translate-x-1 transition">
               Manage Orders <ArrowRight className="w-4 h-4" />
             </div>
           </Link>
 
           <Link
             href="/admin/inventory"
-            className="group bg-white p-6 rounded-2xl border border-[#D7DEDB] hover:border-[#0B4A3A] transition shadow-sm flex flex-col justify-between"
+            className="group bg-white p-8 rounded-2xl border border-[#D7DEDB] hover:border-[#0B4A3A] transition shadow-sm flex flex-col justify-between"
           >
             <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#FAF3EA] text-[#0B4A3A] flex items-center justify-center mb-4">
-                <Boxes className="w-6 h-6 text-[#0B4A3A]" />
+              <div className="w-14 h-14 rounded-2xl bg-[#FAF3EA] text-[#0B4A3A] flex items-center justify-center mb-5">
+                <Boxes className="w-7 h-7 text-[#0B4A3A]" />
               </div>
-              <h3 className="text-lg font-bold text-[#0F2A22] group-hover:text-[#0B4A3A] transition">
-                FEFO Inventory & Batch Tracking
+              <h3 className="text-xl font-bold text-[#0F2A22] group-hover:text-[#0B4A3A] transition">
+                FEFO Inventory &amp; Batch Tracking
               </h3>
-              <p className="text-xs text-[#5B6B65] mt-1.5 leading-relaxed">
-                Audit batches by First-Expiry First-Out chronology, inspect stock levels, quarantined batches, and manufacturer certificates.
+              <p className="text-sm text-[#5B6B65] mt-2 leading-relaxed">
+                Audit batches by First-Expiry First-Out chronology, inspect stock levels, quarantined batches, expiry thresholds, and active manufacturer batches.
               </p>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-xs font-bold text-[#0B4A3A] group-hover:translate-x-1 transition">
+            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-[#0B4A3A] group-hover:translate-x-1 transition">
               Inspect Inventory <ArrowRight className="w-4 h-4" />
             </div>
           </Link>

@@ -78,7 +78,7 @@ export default function AuthModal({ isOpen, onClose, reason = "cart" }: AuthModa
             </div>
             <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F4F6F5]">
               <Sparkles className="w-4 h-4 text-[#0B4A3A] flex-shrink-0" />
-              <span className="text-xs font-semibold text-[#0F2A22]">Track orders, prescriptions & health records</span>
+              <span className="text-xs font-semibold text-[#0F2A22]">Track orders & health essentials</span>
             </div>
           </div>
 

@@ -10,7 +10,6 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
-    const prescriptionRequired = searchParams.get("prescriptionRequired");
     const inStock = searchParams.get("inStock");
     const sort = searchParams.get("sort") || "featured";
     const page = Math.max(1, Number(searchParams.get("page") || "1"));
@@ -38,10 +37,6 @@ export async function GET(req: NextRequest) {
 
     if (brand) {
       queryParts.push(`brand.slug=eq.${encodeURIComponent(brand)}`);
-    }
-
-    if (prescriptionRequired !== null && prescriptionRequired !== undefined && prescriptionRequired !== "") {
-      queryParts.push(`prescriptionRequired=eq.${prescriptionRequired === "true"}`);
     }
 
     if (search && search.trim()) {
@@ -103,8 +98,6 @@ export async function GET(req: NextRequest) {
         description: p.description,
         composition: p.composition,
         images: p.images || [],
-        prescriptionRequired: p.prescriptionRequired,
-        scheduleType: p.scheduleType,
         isFeatured: p.isFeatured,
         isBestSeller: p.isBestSeller,
         brand: p.brand,

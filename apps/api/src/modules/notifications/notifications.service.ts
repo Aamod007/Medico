@@ -15,7 +15,7 @@ export class NotificationService {
     userId: string;
     title: string;
     message: string;
-    type?: "ORDER" | "PRESCRIPTION" | "PAYMENT" | "PROMO" | "SYSTEM";
+    type?: "ORDER" | "PAYMENT" | "PROMO" | "SYSTEM";
     link?: string;
   }): Promise<void> {
     const { userId, title, message, type = "ORDER", link } = params;

@@ -24,7 +24,7 @@ export default function AboutPage() {
           </h1>
           <p className="text-gray-200 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
             Pharmico was founded with a singular mission: to make genuine prescription medications,
-            vital health diagnostics, and top-tier doctor consultations accessible to every Indian
+            wellness essentials, and daily healthcare necessities accessible to every Indian
             household at fair prices.
           </p>
         </div>
@@ -98,7 +98,7 @@ export default function AboutPage() {
               </div>
               <h3 className="font-bold text-lg text-gray-900 mb-2">Licensed Pharmacist Verification</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Every prescription order is audited by a registered Pharm.D professional to ensure
+                Every medicine order is audited by a registered Pharm.D professional to ensure
                 correct dosing, contraindication checks, and patient safety.
               </p>
             </div>

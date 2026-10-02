@@ -32,12 +32,21 @@ export class InventoryService {
       if (remaining <= 0) break;
 
       const deduction = Math.min(batch.quantity, remaining);
-      await tx.inventoryBatch.update({
-        where: { id: batch.id },
+      const updateResult = await tx.inventoryBatch.updateMany({
+        where: {
+          id: batch.id,
+          quantity: { gte: deduction },
+        },
         data: {
           quantity: { decrement: deduction },
         },
       });
+
+      if (updateResult.count === 0) {
+        throw new Error(
+          `Insufficient stock during concurrent reservation for batch ${batch.batchNumber}`
+        );
+      }
 
       remaining -= deduction;
     }

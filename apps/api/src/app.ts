@@ -17,10 +17,7 @@ import ordersRoutes from "./modules/orders/orders.routes";
 import paymentsRoutes from "./modules/payments/payments.routes";
 import { createRazorpayOrder, verifyPayment } from "./modules/payments/payments.controller";
 import { optionalAuthenticate } from "./middlewares/auth";
-import prescriptionsRoutes from "./modules/prescriptions/prescriptions.routes";
 import notificationsRoutes from "./modules/notifications/notifications.routes";
-import labsRoutes from "./modules/labs/labs.routes";
-import consultationsRoutes from "./modules/consultations/consultations.routes";
 import adminRoutes from "./modules/admin/admin.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 
@@ -38,10 +35,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Static uploads: only serve in non-serverless environments
-if (process.env.VERCEL !== "1") {
-  app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-}
+
 
 // General API rate limiting (300 requests per 15 minutes)
 const limiter = rateLimit({
@@ -82,10 +76,7 @@ app.use("/api/orders", ordersRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.post("/api/create-order", optionalAuthenticate, createRazorpayOrder);
 app.post("/api/verify-payment", optionalAuthenticate, verifyPayment);
-app.use("/api/prescriptions", prescriptionsRoutes);
 app.use("/api/notifications", notificationsRoutes);
-app.use("/api/labs", labsRoutes);
-app.use("/api/consultations", consultationsRoutes);
 app.use("/api/admin", adminRoutes);
 
 // 404 handler

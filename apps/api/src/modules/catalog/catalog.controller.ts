@@ -1,9 +1,21 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma";
+import cache from "../../lib/redis";
 import { ProductQueryInput } from "@medico/shared";
 import { Prisma } from "@prisma/client";
 
 export async function getCategories(_req: Request, res: Response): Promise<void> {
+  const cacheKey = "catalog:categories";
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json({ success: true, data: JSON.parse(cached) });
+      return;
+    }
+  } catch {
+    // Cache miss fallback
+  }
+
   const categories = await prisma.category.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
@@ -13,10 +25,28 @@ export async function getCategories(_req: Request, res: Response): Promise<void>
       },
     },
   });
+
+  try {
+    await cache.set(cacheKey, JSON.stringify(categories), "EX", 120);
+  } catch {
+    // Cache write error fallback
+  }
+
   res.json({ success: true, data: categories });
 }
 
 export async function getBrands(_req: Request, res: Response): Promise<void> {
+  const cacheKey = "catalog:brands";
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json({ success: true, data: JSON.parse(cached) });
+      return;
+    }
+  } catch {
+    // Cache miss fallback
+  }
+
   const brands = await prisma.brand.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
@@ -26,6 +56,13 @@ export async function getBrands(_req: Request, res: Response): Promise<void> {
       },
     },
   });
+
+  try {
+    await cache.set(cacheKey, JSON.stringify(brands), "EX", 120);
+  } catch {
+    // Cache write error fallback
+  }
+
   res.json({ success: true, data: brands });
 }
 
@@ -36,12 +73,22 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     search,
     minPrice,
     maxPrice,
-    prescriptionRequired,
     inStock,
     sort,
     page = 1,
     limit = 20,
   } = (req.query as unknown) as ProductQueryInput;
+
+  const cacheKey = `catalog:products:${JSON.stringify(req.query)}`;
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+  } catch {
+    // Cache miss fallback
+  }
 
   const where: Prisma.ProductWhereInput = {
     isActive: true,
@@ -54,10 +101,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
   if (brand) {
     where.brand = { slug: brand };
-  }
-
-  if (prescriptionRequired !== undefined) {
-    where.prescriptionRequired = String(prescriptionRequired) === "true";
   }
 
   if (search) {
@@ -142,8 +185,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
         description: p.description,
         composition: p.composition,
         images: p.images,
-        prescriptionRequired: p.prescriptionRequired,
-        scheduleType: p.scheduleType,
         isFeatured: p.isFeatured,
         isBestSeller: p.isBestSeller,
         brand: p.brand,
@@ -165,7 +206,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
 
     const paginated = data.slice(skip, skip + take);
 
-    res.json({
+    const result = {
       success: true,
       data: paginated,
       meta: {
@@ -174,7 +215,13 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
         total: data.length,
         totalPages: Math.ceil(data.length / Number(limit)),
       },
-    });
+    };
+
+    try {
+      await cache.set(cacheKey, JSON.stringify(result), "EX", 60);
+    } catch {}
+
+    res.json(result);
     return;
   }
 
@@ -235,8 +282,6 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       description: p.description,
       composition: p.composition,
       images: p.images,
-      prescriptionRequired: p.prescriptionRequired,
-      scheduleType: p.scheduleType,
       isFeatured: p.isFeatured,
       isBestSeller: p.isBestSeller,
       brand: p.brand,
@@ -250,7 +295,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     };
   });
 
-  res.json({
+  const result = {
     success: true,
     data,
     meta: {
@@ -259,11 +304,26 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       total,
       totalPages: Math.ceil(total / Number(limit)),
     },
-  });
+  };
+
+  try {
+    await cache.set(cacheKey, JSON.stringify(result), "EX", 60);
+  } catch {}
+
+  res.json(result);
 }
 
 export async function getProductBySlug(req: Request<{ slug: string }>, res: Response): Promise<void> {
   const { slug } = req.params;
+  const cacheKey = `catalog:product:${slug}`;
+
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+  } catch {}
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -314,13 +374,19 @@ export async function getProductBySlug(req: Request<{ slug: string }>, res: Resp
     },
   });
 
-  res.json({
+  const result = {
     success: true,
     data: {
       ...product,
       relatedProducts,
     },
-  });
+  };
+
+  try {
+    await cache.set(cacheKey, JSON.stringify(result), "EX", 60);
+  } catch {}
+
+  res.json(result);
 }
 
 export async function searchAutocomplete(req: Request, res: Response): Promise<void> {
@@ -329,6 +395,15 @@ export async function searchAutocomplete(req: Request, res: Response): Promise<v
     res.json({ success: true, data: { products: [], categories: [], brands: [] } });
     return;
   }
+
+  const cacheKey = `catalog:autocomplete:${query.toLowerCase().trim()}`;
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+  } catch {}
 
   const [products, categories, brands] = await Promise.all([
     prisma.product.findMany({
@@ -347,7 +422,6 @@ export async function searchAutocomplete(req: Request, res: Response): Promise<v
         slug: true,
         images: true,
         composition: true,
-        prescriptionRequired: true,
         variants: {
           where: { isDefault: true },
           select: { price: true, mrp: true },
@@ -367,14 +441,29 @@ export async function searchAutocomplete(req: Request, res: Response): Promise<v
     }),
   ]);
 
-  res.json({
+  const result = {
     success: true,
     data: { products, categories, brands },
-  });
+  };
+
+  try {
+    await cache.set(cacheKey, JSON.stringify(result), "EX", 60);
+  } catch {}
+
+  res.json(result);
 }
 
 export async function getProductSubstitutes(req: Request<{ slug: string }>, res: Response): Promise<void> {
   const { slug } = req.params;
+  const cacheKey = `catalog:substitutes:${slug}`;
+
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+  } catch {}
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -433,6 +522,11 @@ export async function getProductSubstitutes(req: Request<{ slug: string }>, res:
     };
   });
 
-  res.json({ success: true, data: formatted });
-}
+  const result = { success: true, data: formatted };
 
+  try {
+    await cache.set(cacheKey, JSON.stringify(result), "EX", 120);
+  } catch {}
+
+  res.json(result);
+}

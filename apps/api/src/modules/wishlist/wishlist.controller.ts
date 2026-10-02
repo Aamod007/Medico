@@ -21,8 +21,6 @@ function formatProduct(p: any) {
     description: p.description,
     composition: p.composition,
     images: p.images,
-    prescriptionRequired: p.prescriptionRequired,
-    scheduleType: p.scheduleType,
     isFeatured: p.isFeatured,
     isBestSeller: p.isBestSeller,
     brand: p.brand,

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     const [prodRes, catRes, brandRes] = await Promise.all([
       fetch(
-        `${supabaseUrl}/rest/v1/Product?or=(name.ilike.*${trimmed}*,composition.ilike.*${trimmed}*)&isActive=eq.true&deletedAt=is.null&select=id,name,slug,images,composition,prescriptionRequired,variants:ProductVariant(price,mrp)&limit=6`,
+        `${supabaseUrl}/rest/v1/Product?or=(name.ilike.*${trimmed}*,composition.ilike.*${trimmed}*)&isActive=eq.true&deletedAt=is.null&select=id,name,slug,images,composition,variants:ProductVariant(price,mrp)&limit=6`,
         { headers, cache: "no-store" }
       ),
       fetch(

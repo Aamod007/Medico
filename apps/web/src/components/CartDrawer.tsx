@@ -40,7 +40,6 @@ export default function CartDrawer() {
     discount,
     deliveryFee,
     totalAmount,
-    hasPrescriptionItems,
     isDrawerOpen,
     closeDrawer,
     updateQuantity,

@@ -16,7 +16,6 @@ export interface CartItemData {
   subtotal: number;
   availableStock: number;
   isOutOfStock: boolean;
-  prescriptionRequired: boolean;
 }
 
 interface CartState {
@@ -27,7 +26,6 @@ interface CartState {
   discount: number;
   deliveryFee: number;
   totalAmount: number;
-  hasPrescriptionItems: boolean;
   isDrawerOpen: boolean;
   isLoading: boolean;
   openDrawer: () => void;
@@ -47,7 +45,6 @@ export const useCartStore = create<CartState>((set, get) => ({
   discount: 0,
   deliveryFee: 0,
   totalAmount: 0,
-  hasPrescriptionItems: false,
   isDrawerOpen: false,
   isLoading: false,
 
@@ -67,7 +64,6 @@ export const useCartStore = create<CartState>((set, get) => ({
           discount: res.data.discount || 0,
           deliveryFee: res.data.deliveryFee || 0,
           totalAmount: res.data.totalAmount || 0,
-          hasPrescriptionItems: res.data.hasPrescriptionItems || false,
         });
       }
     } catch (e) {
@@ -125,7 +121,6 @@ export const useCartStore = create<CartState>((set, get) => ({
         discount: 0,
         deliveryFee: 0,
         totalAmount: 0,
-        hasPrescriptionItems: false,
       });
     } catch (e) {
       console.error("Clear cart error:", e);

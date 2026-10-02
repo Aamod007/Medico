@@ -156,3 +156,23 @@ SELECT 'C13_ORPHAN_INVENTORY_BATCHES' AS invariant_code,
        json_agg(json_build_object('batchId', ib.id)) AS violation_details
 FROM "InventoryBatch" ib
 WHERE NOT EXISTS (SELECT 1 FROM "ProductVariant" pv WHERE pv.id = ib."variantId");
+
+-- INVARIANT C14: Prescription Gate Check (Orders with Rx items must have approved, unexpired prescription)
+SELECT 'C14_RX_GATE_VIOLATION' AS invariant_code,
+       COUNT(*) AS violations,
+       COALESCE(json_agg(json_build_object('orderId', o.id, 'orderNumber', o."orderNumber", 'status', o.status)), '[]'::json) AS violation_details
+FROM "Order" o
+WHERE o.status IN ('CONFIRMED', 'PACKED', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED')
+  AND EXISTS (
+      SELECT 1 FROM "OrderItem" oi
+      JOIN "ProductVariant" pv ON pv.id = oi."variantId"
+      JOIN "Product" p ON p.id = pv."productId"
+      WHERE oi."orderId" = o.id AND p."prescriptionRequired" = true
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM "Prescription" rx
+      WHERE rx.id = o."prescriptionId"
+        AND rx.status = 'APPROVED'
+        AND (rx."validUntil" IS NULL OR rx."validUntil" >= CURRENT_DATE)
+  );
+

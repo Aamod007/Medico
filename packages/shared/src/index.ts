@@ -68,6 +68,8 @@ export type Role = (typeof RoleEnum)[keyof typeof RoleEnum];
 
 export const OrderStatusEnum = {
   PLACED: "PLACED",
+  PENDING_PAYMENT: "PENDING_PAYMENT",
+  PENDING_RX: "PENDING_RX",
   CONFIRMED: "CONFIRMED",
   PACKED: "PACKED",
   SHIPPED: "SHIPPED",
@@ -78,6 +80,22 @@ export const OrderStatusEnum = {
   RETURNED: "RETURNED",
 } as const;
 export type OrderStatus = (typeof OrderStatusEnum)[keyof typeof OrderStatusEnum];
+
+export const PrescriptionStatusEnum = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  EXPIRED: "EXPIRED",
+} as const;
+export type PrescriptionStatus = (typeof PrescriptionStatusEnum)[keyof typeof PrescriptionStatusEnum];
+
+export const RxScheduleEnum = {
+  OTC: "OTC",
+  H: "H",
+  H1: "H1",
+  X: "X",
+} as const;
+export type RxSchedule = (typeof RxScheduleEnum)[keyof typeof RxScheduleEnum];
 
 export const PaymentStatusEnum = {
   PENDING: "PENDING",
@@ -241,3 +259,30 @@ export const createReviewSchema = z.object({
   comment: z.string().min(5).max(1000),
 });
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
+
+// ============================================================================
+// ZOD SCHEMAS & TYPES: FAMILY MEMBERS & PRESCRIPTIONS
+// ============================================================================
+
+export const createFamilyMemberSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(80),
+  relation: z.string().min(2, "Relation is required").max(50),
+  dob: z.string().datetime().optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+});
+export type CreateFamilyMemberInput = z.infer<typeof createFamilyMemberSchema>;
+
+export const uploadPrescriptionSchema = z.object({
+  familyMemberId: z.string().uuid().optional(),
+  fileKey: z.string().min(1, "File key/URL is required"),
+  mimeType: z.string().default("application/pdf"),
+});
+export type UploadPrescriptionInput = z.infer<typeof uploadPrescriptionSchema>;
+
+export const reviewPrescriptionSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  rejectionReason: z.string().max(500).optional(),
+  validUntil: z.string().datetime().optional().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+});
+export type ReviewPrescriptionInput = z.infer<typeof reviewPrescriptionSchema>;
+

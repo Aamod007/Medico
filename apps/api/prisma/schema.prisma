@@ -26,6 +26,8 @@ enum AddressType {
 
 enum OrderStatus {
   PLACED
+  PENDING_PAYMENT
+  PENDING_RX
   CONFIRMED
   PACKED
   SHIPPED
@@ -57,6 +59,7 @@ enum DiscountType {
 
 enum NotificationType {
   ORDER
+  PRESCRIPTION
   PAYMENT
   PROMO
   SYSTEM
@@ -66,6 +69,20 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum PrescriptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum RxSchedule {
+  OTC
+  H
+  H1
+  X
 }
 
 // ============================================================================
@@ -90,6 +107,8 @@ model User {
   // Relations
   addresses       Address[]
   orders          Order[]
+  prescriptions   Prescription[]
+  familyMembers   FamilyMember[]
   reviews         Review[]
   cart            Cart?
   wishlist        Wishlist[]
@@ -115,6 +134,7 @@ model Address {
   pincode      String
   type         AddressType @default(HOME)
   isDefault    Boolean     @default(false)
+  deletedAt    DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -180,6 +200,8 @@ model Product {
   brandId             String
   categoryId          String
   images              String[]         @default([])
+  rxRequired          Boolean          @default(false) @map("prescriptionRequired")
+  rxSchedule          RxSchedule       @default(OTC)
   isFeatured          Boolean          @default(false)
   isBestSeller        Boolean          @default(false)
   isActive            Boolean          @default(true)
@@ -199,6 +221,7 @@ model Product {
   @@index([isFeatured])
   @@index([isBestSeller])
   @@index([isActive])
+  @@index([rxRequired])
 }
 
 model ProductVariant {
@@ -336,6 +359,7 @@ model Order {
   totalAmount    Decimal              @db.Decimal(10, 2)
   paymentMethod  PaymentMethod        @default(RAZORPAY)
   paymentStatus  PaymentStatus        @default(PENDING)
+  prescriptionId String?
   couponId       String?
   deliverySlot   String?
   notes          String?
@@ -347,6 +371,7 @@ model Order {
 
   user           User                 @relation(fields: [userId], references: [id])
   address        Address              @relation(fields: [addressId], references: [id])
+  prescription   Prescription?        @relation(fields: [prescriptionId], references: [id])
   coupon         Coupon?              @relation(fields: [couponId], references: [id])
   items          OrderItem[]
   statusHistory  OrderStatusHistory[]
@@ -357,6 +382,7 @@ model Order {
   @@index([orderNumber])
   @@index([status])
   @@index([paymentStatus])
+  @@index([prescriptionId])
   @@index([createdAt])
 }
 
@@ -549,4 +575,47 @@ model Setting {
   updatedAt   DateTime @updatedAt
 
   @@index([key])
+}
+
+// ============================================================================
+// PRESCRIPTIONS & FAMILY MEMBERS
+// ============================================================================
+
+model FamilyMember {
+  id        String    @id @default(uuid())
+  userId    String
+  name      String
+  relation  String
+  dob       DateTime?
+  gender    Gender?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+
+  @@index([userId])
+}
+
+model Prescription {
+  id              String             @id @default(uuid())
+  userId          String
+  familyMemberId  String?
+  fileKey         String
+  mimeType        String             @default("application/pdf")
+  status          PrescriptionStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  validUntil      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  orders       Order[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([familyMemberId])
 }

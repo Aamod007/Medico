@@ -78,22 +78,12 @@ export default function PillNav() {
     })),
   ];
 
-  // Static filter pills
-  const staticPills = [
-    { label: "Under 1000", href: "/products?maxPrice=1000", badgeType: null },
-    { label: "Best Selling", href: "/products?sort=featured", badgeType: "verified" },
-    { label: "New Arrivals", href: "/products?sort=newest", badgeType: "sparkle" },
-    { label: "New Offer", href: "/products?discount=true", badgeType: "discount" },
-  ];
-
   // Dynamic category pills from database
-  const categoryPills = dbCategories.slice(0, 4).map((c) => ({
+  const pills = dbCategories.map((c) => ({
     label: c.name,
     href: `/products?category=${c.slug}`,
     badgeType: null,
   }));
-
-  const pills = [...staticPills, ...categoryPills];
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

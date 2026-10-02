@@ -312,6 +312,9 @@ export async function getProducts(req: Request, res: Response, next: NextFunctio
   } catch {}
 
   res.json(result);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function getProductBySlug(req: Request<{ slug: string }>, res: Response): Promise<void> {

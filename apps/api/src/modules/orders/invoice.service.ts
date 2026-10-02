@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { BRAND_CONFIG } from "@medico/shared";
 
 const PDFDocument = require("pdfkit");
 
@@ -131,17 +132,17 @@ export class InvoiceService {
       const leftStartY = y;
       doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Billed by:", leftColX, y);
       y += 14;
-      doc.font("Helvetica-Bold").fontSize(10).fillColor(C.dark).text("Medico", leftColX, y);
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(C.dark).text(BRAND_CONFIG.legalName, leftColX, y);
       y += 14;
-      doc.font("Helvetica").fontSize(8).fillColor(C.muted).text("hello@medico.in", leftColX, y);
+      doc.font("Helvetica").fontSize(8).fillColor(C.muted).text(BRAND_CONFIG.supportEmail, leftColX, y);
       y += 14;
       doc
         .font("Helvetica")
         .fontSize(8)
         .fillColor(C.muted)
-        .text("8526 Daisy Drive, Bellandur,", leftColX, y);
+        .text(`${BRAND_CONFIG.address.line1},`, leftColX, y);
       y += 11;
-      doc.text("Bangalore, Karnataka, India. 560103", leftColX, y);
+      doc.text(`${BRAND_CONFIG.address.city}, ${BRAND_CONFIG.address.state}, India. ${BRAND_CONFIG.address.pincode}`, leftColX, y);
       y += 20;
 
       doc.font("Helvetica").fontSize(8).fillColor(C.light).text("Date Issued:", leftColX, y);

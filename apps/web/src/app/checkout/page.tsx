@@ -43,8 +43,8 @@ export default function CheckoutPage() {
     fullName: "",
     phone: "",
     addressLine1: "",
-    city: "Bangalore",
-    state: "Karnataka",
+    city: "",
+    state: "",
     pincode: "",
     type: "HOME",
   });

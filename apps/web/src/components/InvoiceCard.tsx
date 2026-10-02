@@ -3,6 +3,7 @@
 import React from "react";
 import { Printer, Download, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { BRAND_CONFIG } from "@medico/shared";
 
 interface InvoiceItem {
   id?: string;
@@ -140,11 +141,14 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
           {/* Left Column: Billed by */}
           <div>
             <p className="text-xs text-neutral-400 font-medium">Billed by:</p>
-            <h4 className="text-sm font-bold text-neutral-900 mt-1">Medico</h4>
-            <p className="text-xs text-neutral-500 mt-0.5">hello@medico.in</p>
+            <h4 className="text-sm font-bold text-neutral-900 mt-1">{BRAND_CONFIG.legalName}</h4>
+            <p className="text-xs text-neutral-500 mt-0.5">{BRAND_CONFIG.supportEmail}</p>
             <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              8526 Daisy Drive, Bellandur,<br />
-              Bangalore, Karnataka, India. 560103
+              {BRAND_CONFIG.address.line1},<br />
+              {BRAND_CONFIG.address.city}, {BRAND_CONFIG.address.state}, {BRAND_CONFIG.address.country} - {BRAND_CONFIG.address.pincode}
+            </p>
+            <p className="text-[11px] text-neutral-400 mt-1 font-mono">
+              DL: {BRAND_CONFIG.drugLicenseNumber} • GST: {BRAND_CONFIG.gstin}
             </p>
 
             <div className="mt-6">
@@ -159,15 +163,23 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
           <div>
             <p className="text-xs text-neutral-400 font-medium">Billed to:</p>
             <h4 className="text-sm font-bold text-neutral-900 mt-1">
-              {address?.fullName || "Jacob Jones"}
+              {address?.fullName || "Valued Customer"}
             </h4>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              {address?.phone ? `+91 ${address.phone}` : "hello@fleurish.com"}
-            </p>
-            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              {address?.addressLine1 || "1234 Elm Street"},<br />
-              {address?.city || "Bangalore"}, {address?.state || "Karnataka"}, India. {address?.pincode || "560103"}
-            </p>
+            {address?.phone && (
+              <p className="text-xs text-neutral-500 mt-0.5">
+                +91 {address.phone}
+              </p>
+            )}
+            {address?.addressLine1 ? (
+              <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                {address.addressLine1}{address.addressLine2 ? `, ${address.addressLine2}` : ""},<br />
+                {[address.city, address.state, address.pincode].filter(Boolean).join(", ")}
+              </p>
+            ) : (
+              <p className="text-xs text-neutral-400 italic mt-1">
+                Standard Delivery Address
+              </p>
+            )}
 
             <div className="mt-6">
               <p className="text-xs text-neutral-400 font-medium">Payment Status:</p>
@@ -184,6 +196,7 @@ export default function InvoiceCard({ order, showActions = true }: InvoiceCardPr
             </div>
           </div>
         </div>
+
 
         {/* Items Table */}
         <div className="mt-10">

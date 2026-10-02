@@ -3,12 +3,12 @@
 | Bug ID | Severity | Area | Summary | Root Cause (file:line) | Status | Commit / Fix Ref |
 |---|---|---|---|---|---|---|
 | BUG-000 | P2 | Build/Lint | `npm run lint` failed due to missing ESLint config & packages in `apps/web` | `apps/web/.eslintrc.json` missing, causing interactive CLI prompt hang | FIXED | `fed7e2a` |
-| BUG-001 | P1 | Catalog API | Catalog sort by price (`price_asc`/`price_desc`) sorts by variant count instead of price | `apps/api/src/modules/catalog/catalog.controller.ts:100` | OPEN | Scheduled in Phase 3 |
-| BUG-002 | P0 | Security / RBAC | Admin endpoints (`/api/admin/*`) completely unauthenticated and accessible to any public user | `apps/api/src/modules/admin/admin.routes.ts:15-20` | OPEN | Scheduled in Phase 3 |
-| BUG-003 | P2 | Catalog / Compliance | Missing substitute medicine endpoint `/api/catalog/products/:slug/substitutes` for generic/salt matching | `apps/api/src/modules/catalog/catalog.routes.ts` missing substitute route | OPEN | Scheduled in Phase 3 |
-| BUG-004 | P2 | Storefront UX | Missing static policy pages for Refund Policy (`/refund`) and Shipping Policy (`/shipping`) | `apps/web/src/app` missing policy routes | OPEN | Scheduled in Phase 2 |
-| BUG-005 | P2 | Pharmacy Compliance | Storefront footer missing mandatory pharmacy disclosures: Drug License Number, GSTIN, and Licensed Pharmacist details | `apps/web/src/components/Footer.tsx` | OPEN | Scheduled in Phase 2 |
-| BUG-006 | P1 | Admin Portal | Admin frontend routes (`/admin`, `/admin/prescriptions`, `/admin/orders`, `/admin/inventory`) missing from Next.js web application | `apps/web/src/app/admin` directory absent | OPEN | Scheduled in Phase 2 |
+| BUG-001 | P1 | Catalog API | Catalog sort by price (`price_asc`/`price_desc`) sorts by variant count instead of price | `apps/api/src/modules/catalog/catalog.controller.ts:100` | FIXED | `f2dc711` |
+| BUG-002 | P0 | Security / RBAC | Admin endpoints (`/api/admin/*`) completely unauthenticated and accessible to any public user | `apps/api/src/modules/admin/admin.routes.ts:15-20` | FIXED | `529a3ef` |
+| BUG-003 | P2 | Catalog / Compliance | Missing substitute medicine endpoint `/api/catalog/products/:slug/substitutes` for generic/salt matching | `apps/api/src/modules/catalog/catalog.routes.ts` missing substitute route | FIXED | `00f037a` |
+| BUG-004 | P2 | Storefront UX | Missing static policy pages for Refund Policy (`/refund`) and Shipping Policy (`/shipping`) | `apps/web/src/app` missing policy routes | FIXED | `deabff3` |
+| BUG-005 | P2 | Pharmacy Compliance | Storefront footer missing mandatory pharmacy disclosures: Drug License Number, GSTIN, and Licensed Pharmacist details | `apps/web/src/components/Footer.tsx` | FIXED | `deabff3` |
+| BUG-006 | P1 | Admin Portal | Admin frontend routes (`/admin`, `/admin/prescriptions`, `/admin/orders`, `/admin/inventory`) missing from Next.js web application | `apps/web/src/app/admin` directory absent | FIXED | `deabff3` |
 | BUG-007 | P0 | Orders / Core API | Prisma interactive transaction 5s default timeout crashed API server with unhandled error on order placement | `apps/api/src/modules/orders/orders.controller.ts:147` | FIXED | `e77b4ed` |
 
 ---
@@ -32,8 +32,8 @@
 - **Expected**: Products ordered by lowest price variant ascending.
 - **Actual**: In `catalog.controller.ts:100`, `orderBy = { variants: { _count: "asc" } }`, which sorts by how many variants a product has rather than its price.
 - **Root Cause**: `catalog.controller.ts:100` uses `_count` on variants.
-- **Fix**: Order products by minimum variant price or sort resulting dataset by effective default variant price.
-- **Status**: OPEN
+- **Fix**: Implemented true global catalog sorting by effective default variant price (`price_asc` and `price_desc`).
+- **Status**: FIXED (`f2dc711`)
 
 ### BUG-002: Insecure Admin Endpoints without Authentication or Role Checks
 - **Severity**: P0
@@ -42,8 +42,8 @@
 - **Expected**: HTTP 401 Unauthorized / HTTP 403 Forbidden.
 - **Actual**: Routes executed openly without auth check, leaking all patient orders, addresses, and prescription documents, and allowing unauthorized prescription approvals.
 - **Root Cause**: `apps/api/src/modules/admin/admin.routes.ts` imports `authenticate, requireRole` but never mounts them on routes.
-- **Fix**: Mount `authenticate, requireRole(Role.ADMIN, Role.PHARMACIST)` middleware on all admin routes.
-- **Status**: OPEN
+- **Fix**: Mounted `authenticate` and `requireRole(Role.ADMIN, Role.PHARMACIST)` middleware on all admin routes, and removed unauthorized customer fallback in `auth.ts`.
+- **Status**: FIXED (`529a3ef`)
 
 ### BUG-003: Missing Generic / Salt Substitutes API Endpoint
 - **Severity**: P2
@@ -52,8 +52,8 @@
 - **Expected**: Returns alternative brands with the same active pharmaceutical ingredient / salt composition.
 - **Actual**: Returns HTTP 404 endpoint not found.
 - **Root Cause**: Endpoint not defined in `catalog.routes.ts` or `catalog.controller.ts`.
-- **Fix**: Implement `getSubstitutes` query matching `composition` and mount on `/api/catalog/products/:slug/substitutes`.
-- **Status**: OPEN
+- **Fix**: Implemented `getProductSubstitutes` query matching active composition and mounted on `/api/catalog/products/:slug/substitutes`.
+- **Status**: FIXED (`00f037a`)
 
 ### BUG-004: Missing Legal Storefront Pages (/refund and /shipping)
 - **Severity**: P2

@@ -37,6 +37,7 @@ export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [bestSellers, setBestSellers] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [activeFaq, setActiveFaq] = useState<number>(0);
 
   // Quick bar state & custom dropdowns
@@ -77,9 +78,9 @@ export default function HomePage() {
         api.get("/catalog/brands"),
       ]);
 
-      if (catRes.success) setCategories(catRes.data || []);
-      if (brandRes.success) setBrands(brandRes.data || []);
-      if (prodRes.success && prodRes.data) {
+      if (catRes.success && catRes.data?.length) setCategories(catRes.data);
+      if (brandRes.success && brandRes.data?.length) setBrands(brandRes.data);
+      if (prodRes.success && prodRes.data?.length) {
         setFeaturedProducts(prodRes.data.slice(0, 12));
         setBestSellers(prodRes.data.slice(6, 18));
       }

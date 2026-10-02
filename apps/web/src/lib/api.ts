@@ -1,11 +1,23 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    // If running in production (e.g. on Vercel) and envUrl is not an external HTTPS service, use relative /api
+    if (!isLocal && (!envUrl || envUrl.includes("localhost"))) {
+      return "/api";
+    }
+  }
+  return envUrl || "http://localhost:5000/api";
+}
 
 export async function fetchApi<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; message?: string; errors?: any[] }> {
-  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const baseUrl = getApiBaseUrl();
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${baseUrl}${cleanEndpoint}`;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -13,24 +25,73 @@ export async function fetchApi<T = any>(
   };
 
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+    } catch (networkErr: any) {
+      // If fetching from baseUrl failed (e.g. localhost:5000 is unreachable on deployed site)
+      // and we are not already using relative /api, attempt relative Next.js route fallback:
+      if (baseUrl !== "/api") {
+        try {
+          const fallbackRes = await fetch(`/api${cleanEndpoint}`, {
+            ...options,
+            headers,
+            credentials: "include",
+          });
+          if (fallbackRes.ok) {
+            const data = await fallbackRes.json();
+            return data;
+          }
+        } catch {
+          // fall through to throw original network error
+        }
+      }
+      throw networkErr;
+    }
 
     // Check if the response is actually JSON
     const contentType = res.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
+      // If non-JSON and we can fall back to relative /api:
+      if (baseUrl !== "/api") {
+        try {
+          const fallbackRes = await fetch(`/api${cleanEndpoint}`, {
+            ...options,
+            headers,
+            credentials: "include",
+          });
+          if (fallbackRes.ok) {
+            const data = await fallbackRes.json();
+            return data;
+          }
+        } catch {}
+      }
       const text = await res.text();
       console.error("Non-JSON response received:", text.substring(0, 200));
       throw new Error(
-        `Server returned non-JSON response (${res.status}). This usually means the API endpoint is not configured correctly.`
+        `Server returned non-JSON response (${res.status}).`
       );
     }
 
     const json = await res.json();
     if (!res.ok) {
+      // If remote returned not-ok and we have a local Next.js route fallback for catalog:
+      if (baseUrl !== "/api" && cleanEndpoint.startsWith("/catalog")) {
+        try {
+          const fallbackRes = await fetch(`/api${cleanEndpoint}`, {
+            ...options,
+            headers,
+            credentials: "include",
+          });
+          if (fallbackRes.ok) {
+            return await fallbackRes.json();
+          }
+        } catch {}
+      }
       throw new Error(json.message || `Request failed with status ${res.status}`);
     }
     return json;

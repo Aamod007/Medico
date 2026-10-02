@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import prisma from "../../lib/prisma";
 import cache from "../../lib/redis";
 import { ProductQueryInput } from "@medico/shared";
@@ -66,8 +66,9 @@ export async function getBrands(_req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: brands });
 }
 
-export async function getProducts(req: Request, res: Response): Promise<void> {
-  const {
+export async function getProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const {
     category,
     brand,
     search,

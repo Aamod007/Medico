@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Star,
+  ChevronLeft,
   ChevronRight,
   ChevronDown,
   ArrowRight,
@@ -53,6 +54,15 @@ export default function HomePage() {
   const [spotlightVariant, setSpotlightVariant] = useState("100 tablets (Value Pack - ₹195)");
   const [spotlightDropdownOpen, setSpotlightDropdownOpen] = useState(false);
   const spotlightRef = useRef<HTMLDivElement>(null);
+
+  // Category horizontal scroll ref & controls
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const scrollCategories = (direction: "left" | "right") => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = direction === "left" ? -450 : 450;
+      categoryScrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     const handleHeroClickOutside = (e: MouseEvent) => {
@@ -385,30 +395,53 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. CIRCULAR CATEGORY GRID - Generously spaced on large screens */}
+      {/* 2. CIRCULAR CATEGORY SECTION - Single horizontal line with smooth scroll */}
       <section className="max-w-[1720px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-8 xl:px-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-[#0F2A22]">Shop by Category</h2>
             <p className="text-xs sm:text-sm text-[#5B6B65] mt-0.5">Explore authentic medications by healthcare specialization</p>
           </div>
-          <Link
-            href="/products"
-            className="text-xs sm:text-sm font-bold text-[#0B4A3A] hover:underline flex items-center gap-1.5"
-          >
-            <span>Shop All Products</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => scrollCategories("left")}
+                aria-label="Scroll left"
+                className="w-9 h-9 rounded-full border border-[#D7DEDB] bg-white hover:bg-[#0B4A3A] text-[#0F2A22] hover:text-white flex items-center justify-center transition shadow-xs hover:shadow-sm cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCategories("right")}
+                aria-label="Scroll right"
+                className="w-9 h-9 rounded-full border border-[#D7DEDB] bg-white hover:bg-[#0B4A3A] text-[#0F2A22] hover:text-white flex items-center justify-center transition shadow-xs hover:shadow-sm cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <Link
+              href="/products"
+              className="text-xs sm:text-sm font-bold text-[#0B4A3A] hover:underline flex items-center gap-1.5 ml-1"
+            >
+              <span>Shop All Products</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 xl:gap-6 2xl:gap-8">
+        <div
+          ref={categoryScrollRef}
+          className="flex items-start gap-4 xl:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-2 -mx-4 sm:-mx-8 xl:-mx-12 px-4 sm:px-8 xl:px-12"
+        >
           {categories.map((cat) => (
             <Link
               key={cat.id}
               href={`/products?category=${cat.slug}`}
-              className="group flex flex-col items-center text-center space-y-2.5 p-3 rounded-3xl hover:bg-white hover:shadow-lg transition-all duration-300"
+              className="group flex-shrink-0 w-28 sm:w-32 xl:w-36 flex flex-col items-center text-center space-y-2.5 p-2 sm:p-3 rounded-3xl hover:bg-white hover:shadow-lg transition-all duration-300"
             >
-              <div className="w-24 h-24 sm:w-28 sm:h-28 xl:w-32 xl:h-32 rounded-full bg-[#FAF3EA] border-2 border-[#FDE6D3] p-3 flex items-center justify-center overflow-hidden group-hover:scale-105 group-hover:border-[#0B4A3A] shadow-sm transition-all duration-300">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 xl:w-28 xl:h-28 rounded-full bg-[#FAF3EA] border-2 border-[#FDE6D3] p-3 flex items-center justify-center overflow-hidden group-hover:scale-105 group-hover:border-[#0B4A3A] shadow-sm transition-all duration-300">
                 {cat.image ? (
                   <img
                     src={cat.image}
@@ -416,10 +449,10 @@ export default function HomePage() {
                     className="w-full h-full object-contain"
                   />
                 ) : (
-                  <Sparkles className="w-8 h-8 text-[#0B4A3A]" />
+                  <Sparkles className="w-7 h-7 sm:w-8 sm:h-8 text-[#0B4A3A]" />
                 )}
               </div>
-              <span className="text-xs sm:text-sm font-bold text-[#0F2A22] leading-snug group-hover:text-[#0B4A3A]">
+              <span className="text-xs sm:text-sm font-bold text-[#0F2A22] leading-snug group-hover:text-[#0B4A3A] line-clamp-2">
                 {cat.name}
               </span>
             </Link>

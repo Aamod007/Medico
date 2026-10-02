@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  testMatch: "**/*.spec.ts",
+  testIgnore: ["**/api/**", "**/helpers/**"],
   fullyParallel: false,
   workers: 1, // Deterministic serial flow prevents database race condition contamination across test suites
   timeout: 60000,

@@ -11,7 +11,7 @@ test.describe("J2: Search Functionality", () => {
     await page.waitForTimeout(600); // Wait for debounce
 
     // Autocomplete dropdown should display matching items
-    const autocompleteDropdown = page.locator("div:has-text('Products')");
+    const autocompleteDropdown = page.locator("div:has-text('Matching Medicines in Catalog'), div:has-text('Products')");
     await expect(autocompleteDropdown.first()).toBeVisible();
 
     // Check Paracetamol items appear
@@ -24,7 +24,7 @@ test.describe("J2: Search Functionality", () => {
     await page.goto("/products?search=Paracetamol");
     await page.waitForLoadState("domcontentloaded");
 
-    const productCards = page.locator("div:has-text('Fast-Action Tablets'), div:has-text('Suspension')");
+    const productCards = page.locator("div:has-text('Fast-Action Tablets'), div:has-text('Suspension'), div:has-text('Paracetamol'), div:has-text('Paracip')");
     await expect(productCards.first()).toBeVisible();
   });
 

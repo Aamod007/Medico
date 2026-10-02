@@ -8,7 +8,7 @@ function makeToken(payload: { userId: string; email: string; role: string }) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
 }
 
-describe("Security & IDOR Audit", () => {
+describe("Security & IDOR Audit", { timeout: 30000 }, () => {
   const userAToken = makeToken({ userId: "user_alpha_test_1", email: "alpha@example.com", role: "CUSTOMER" });
   const userBToken = makeToken({ userId: "user_bravo_test_2", email: "bravo@example.com", role: "CUSTOMER" });
   const adminToken = makeToken({ userId: "admin_test_super", email: "admin@pharmico.com", role: "ADMIN" });

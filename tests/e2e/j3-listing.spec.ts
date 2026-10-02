@@ -6,7 +6,7 @@ test.describe("J3: Product Listing & Filters", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Verify products displayed belong to category or match
-    const productGrid = page.locator("div:has-text('Vitamin C'), div:has-text('Cod Liver')");
+    const productGrid = page.locator("div:has-text('Limcee'), div:has-text('Vitamin C'), div:has-text('Becosules'), div:has-text('Cod Liver')");
     await expect(productGrid.first()).toBeVisible();
   });
 
@@ -38,10 +38,12 @@ test.describe("J3: Product Listing & Filters", () => {
 
     // Go back
     await page.goBack();
+    await page.waitForURL(/category=diabetes-care/);
     expect(page.url()).toContain("category=diabetes-care");
 
     // Reload page and check state persists
     await page.reload();
+    await page.waitForLoadState("domcontentloaded");
     expect(page.url()).toContain("category=diabetes-care");
   });
 

@@ -8,7 +8,7 @@ export async function GET() {
     const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 
     const res = await fetch(
-      `${supabaseUrl}/rest/v1/Category?isActive=eq.true&order=sortOrder.asc&select=*`,
+      `${supabaseUrl}/rest/v1/Category?isActive=eq.true&order=sortOrder.asc&select=*,products:Product(count)`,
       {
         headers: {
           apikey: supabaseKey,
@@ -22,7 +22,16 @@ export async function GET() {
       throw new Error(`Supabase returned status ${res.status}`);
     }
 
-    const data = await res.json();
+    const rawData = await res.json();
+    const data = Array.isArray(rawData)
+      ? rawData.map((cat: any) => ({
+          ...cat,
+          _count: {
+            products: cat.products?.[0]?.count ?? 0,
+          },
+        }))
+      : [];
+
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error("Error in /api/catalog/categories:", error?.message);

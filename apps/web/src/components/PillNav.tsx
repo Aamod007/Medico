@@ -14,56 +14,86 @@ import {
   Heart,
   Smile,
   Baby,
+  Tag,
 } from "lucide-react";
+import { api } from "@/lib/api";
+
+// Icon mapping from category slug to Lucide component
+const ICON_MAP: Record<string, any> = {
+  "everyday-essentials": Pill,
+  "vitamins-and-supplements": Sparkles,
+  "diabetes-care": Activity,
+  "first-aid": ShieldCheck,
+  "first-aid-and-trauma-care": ShieldCheck,
+  "digestive-gut-health": HeartPulse,
+  "digestive-and-gut-health": HeartPulse,
+  "womens-health": Heart,
+  "personal-care": Smile,
+  "baby-care": Baby,
+};
+
+function getIconForCategory(slug: string): any {
+  return ICON_MAP[slug] || Tag;
+}
+
+interface DbCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: string;
+  icon?: string;
+  isActive: boolean;
+  _count?: { products: number };
+}
 
 export default function PillNav() {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
 
+  // Fetch categories from API on mount
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await api.get("/catalog/categories");
+        if (res.success && Array.isArray(res.data)) {
+          setDbCategories(res.data);
+        }
+      } catch (e) {
+        console.error("Failed to load categories for PillNav:", e);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  // Build dynamic categories list for dropdown
   const categories = [
     { name: "All Categories", href: "/products", icon: LayoutGrid, count: "All Medicines" },
-    { name: "Everyday Essentials", href: "/products?category=everyday-essentials", icon: Pill, count: "OTC & Daily Care" },
-    { name: "Vitamins & Supplements", href: "/products?category=vitamins-and-supplements", icon: Sparkles, count: "Immunity & Nutrition" },
-    { name: "Diabetes Care", href: "/products?category=diabetes-care", icon: Activity, count: "Sugar & Blood Test" },
-    { name: "First Aid & Trauma Care", href: "/products?category=first-aid", icon: ShieldCheck, count: "Bandages & Antiseptics" },
-    { name: "Digestive & Gut Health", href: "/products?category=digestive-gut-health", icon: HeartPulse, count: "Antacids & Digestion" },
-    { name: "Women's Health", href: "/products?category=womens-health", icon: Heart, count: "Maternal & Feminine Care" },
-    { name: "Personal Care", href: "/products?category=personal-care", icon: Smile, count: "Skin, Hair & Body" },
-    { name: "Baby Care", href: "/products?category=baby-care", icon: Baby, count: "Pediatric Care & Diapers" },
+    ...dbCategories.map((c) => ({
+      name: c.name,
+      href: `/products?category=${c.slug}`,
+      icon: getIconForCategory(c.slug),
+      count: c._count ? `${c._count.products} products` : (c.description || ""),
+    })),
   ];
 
-  const pills = [
-    {
-      label: "Under 1000",
-      href: "/products?maxPrice=1000",
-      badgeType: null,
-    },
-    {
-      label: "Best Selling",
-      href: "/products?sort=featured",
-      badgeType: "verified",
-    },
-    {
-      label: "New Arrivals",
-      href: "/products?sort=newest",
-      badgeType: "sparkle",
-    },
-    {
-      label: "New Offer",
-      href: "/products?discount=true",
-      badgeType: "discount",
-    },
-    {
-      label: "Personal care",
-      href: "/products?category=personal-care",
-      badgeType: null,
-    },
-    {
-      label: "Vitamins & Supplements",
-      href: "/products?category=vitamins-and-supplements",
-      badgeType: null,
-    },
+  // Static filter pills
+  const staticPills = [
+    { label: "Under 1000", href: "/products?maxPrice=1000", badgeType: null },
+    { label: "Best Selling", href: "/products?sort=featured", badgeType: "verified" },
+    { label: "New Arrivals", href: "/products?sort=newest", badgeType: "sparkle" },
+    { label: "New Offer", href: "/products?discount=true", badgeType: "discount" },
   ];
+
+  // Dynamic category pills from database
+  const categoryPills = dbCategories.slice(0, 4).map((c) => ({
+    label: c.name,
+    href: `/products?category=${c.slug}`,
+    badgeType: null,
+  }));
+
+  const pills = [...staticPills, ...categoryPills];
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -104,7 +134,7 @@ export default function PillNav() {
               <div className="px-5 py-2 text-[10px] font-black text-gray-400 uppercase tracking-wider border-b border-gray-100 flex items-center justify-between">
                 <span>Select Category</span>
                 <span className="text-[9px] bg-emerald-50 text-[#0B4A3A] px-2 py-0.5 rounded-full font-bold">
-                  8 Specialties
+                  {dbCategories.length > 0 ? `${dbCategories.length} Specialties` : "All Specialties"}
                 </span>
               </div>
               <div className="py-1 max-h-84 overflow-y-auto divide-y divide-gray-50">
@@ -125,9 +155,11 @@ export default function PillNav() {
                           <div className="font-bold text-[#0F2A22] group-hover:text-[#0B4A3A]">
                             {c.name}
                           </div>
-                          <div className="text-[10px] text-gray-400 group-hover:text-[#0B4A3A]/70">
-                            {c.count}
-                          </div>
+                          {c.count && (
+                            <div className="text-[10px] text-gray-400 group-hover:text-[#0B4A3A]/70">
+                              {c.count}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#0B4A3A] group-hover:translate-x-0.5 transition-all" />
@@ -147,7 +179,6 @@ export default function PillNav() {
               href={pill.href}
               className="flex items-center gap-2 px-5 py-2 sm:py-2.5 rounded-full bg-[#EEF2F0] hover:bg-white text-[#0F2A22] text-xs sm:text-sm font-semibold whitespace-nowrap border border-transparent hover:border-[#D7DEDB] hover:shadow-sm transition-all flex-shrink-0"
             >
-              {/* Blue verified checkmark icon for Best Selling */}
               {pill.badgeType === "verified" && (
                 <span className="w-4 h-4 rounded-full bg-[#2563EB] flex items-center justify-center text-white flex-shrink-0 shadow-xs">
                   <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20">
@@ -160,12 +191,10 @@ export default function PillNav() {
                 </span>
               )}
 
-              {/* Green sparkles icon for New Arrivals */}
               {pill.badgeType === "sparkle" && (
                 <Sparkles className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />
               )}
 
-              {/* Peach / coral percentage badge icon for New Offer */}
               {pill.badgeType === "discount" && (
                 <span className="w-4 h-4 rounded-full bg-[#FED7AA] text-[#EA580C] text-[10px] font-black flex items-center justify-center flex-shrink-0">
                   %
@@ -177,7 +206,7 @@ export default function PillNav() {
           ))}
         </div>
 
-        {/* Dark Green Circular Arrow Button (matching reference image) */}
+        {/* Dark Green Circular Arrow Button */}
         <Link
           href="/products"
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0B4A3A] hover:bg-[#07362a] text-white flex items-center justify-center transition shadow-sm flex-shrink-0 ml-1 sm:ml-2"

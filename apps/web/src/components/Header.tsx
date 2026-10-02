@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -24,6 +24,7 @@ import {
   Smile,
   Baby,
   LayoutGrid,
+  Tag,
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
@@ -70,6 +71,41 @@ export default function Header() {
     { name: "Ahmedabad", pin: "380001", state: "Gujarat" },
   ];
 
+
+  // Icon mapping from category slug to Lucide component
+  const ICON_MAP: Record<string, any> = {
+    "everyday-essentials": Pill,
+    "vitamins-and-supplements": Sparkles,
+    "diabetes-care": Activity,
+    "first-aid": ShieldCheck,
+    "first-aid-and-trauma-care": ShieldCheck,
+    "digestive-gut-health": HeartPulse,
+    "digestive-and-gut-health": HeartPulse,
+    "womens-health": Heart,
+    "personal-care": Smile,
+    "baby-care": Baby,
+  };
+
+  const getIconForCategory = (slug: string) => ICON_MAP[slug] || Tag;
+
+  // Dynamic categories from database
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadHeaderCategories() {
+      try {
+        const res = await api.get("/catalog/categories");
+        if (res.success && res.data) {
+          setDbCategories(res.data);
+        }
+      } catch (e) {
+        console.error("Failed to load header categories:", e);
+      }
+    }
+    loadHeaderCategories();
+  }, []);
+
+  // Build dynamic categories for search dropdown
   const categories = [
     {
       name: "All Categories",
@@ -77,54 +113,12 @@ export default function Header() {
       icon: LayoutGrid,
       subtitle: "Browse complete pharmacy catalog",
     },
-    {
-      name: "Everyday Essentials",
-      slug: "everyday-essentials",
-      icon: Pill,
-      subtitle: "Pain relief, fever, cold & flu",
-    },
-    {
-      name: "Vitamins & Supplements",
-      slug: "vitamins-and-supplements",
-      icon: Sparkles,
-      subtitle: "Multivitamins, omega-3, calcium",
-    },
-    {
-      name: "Diabetes Care",
-      slug: "diabetes-care",
-      icon: Activity,
-      subtitle: "Glucometers, test strips, lancets",
-    },
-    {
-      name: "First Aid & Trauma Care",
-      slug: "first-aid",
-      icon: ShieldCheck,
-      subtitle: "Bandages, antiseptics, cotton",
-    },
-    {
-      name: "Digestive & Gut Health",
-      slug: "digestive-gut-health",
-      icon: HeartPulse,
-      subtitle: "Antacids, probiotics, laxatives",
-    },
-    {
-      name: "Women's Health",
-      slug: "womens-health",
-      icon: Heart,
-      subtitle: "Maternal nutrition, iron, menstrual care",
-    },
-    {
-      name: "Personal Care",
-      slug: "personal-care",
-      icon: Smile,
-      subtitle: "Skin wellness, derma gels, washes",
-    },
-    {
-      name: "Baby Care",
-      slug: "baby-care",
-      icon: Baby,
-      subtitle: "Pediatric drops, rash cream, diapers",
-    },
+    ...dbCategories.map((c: any) => ({
+      name: c.name,
+      slug: c.slug,
+      icon: getIconForCategory(c.slug),
+      subtitle: c.description || (c._count ? `${c._count.products} products` : ""),
+    })),
   ];
 
   // Initialize location from localStorage

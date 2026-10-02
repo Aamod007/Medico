@@ -62,29 +62,6 @@ export const PaymentMethodEnum = {
 } as const;
 export type PaymentMethod = (typeof PaymentMethodEnum)[keyof typeof PaymentMethodEnum];
 
-export const PrescriptionStatusEnum = {
-  PENDING: "PENDING",
-  APPROVED: "APPROVED",
-  REJECTED: "REJECTED",
-} as const;
-export type PrescriptionStatus = (typeof PrescriptionStatusEnum)[keyof typeof PrescriptionStatusEnum];
-
-export const AppointmentStatusEnum = {
-  SCHEDULED: "SCHEDULED",
-  IN_PROGRESS: "IN_PROGRESS",
-  COMPLETED: "COMPLETED",
-  CANCELLED: "CANCELLED",
-} as const;
-export type AppointmentStatus = (typeof AppointmentStatusEnum)[keyof typeof AppointmentStatusEnum];
-
-export const LabBookingStatusEnum = {
-  SCHEDULED: "SCHEDULED",
-  SAMPLE_COLLECTED: "SAMPLE_COLLECTED",
-  PROCESSING: "PROCESSING",
-  COMPLETED: "COMPLETED",
-  CANCELLED: "CANCELLED",
-} as const;
-export type LabBookingStatus = (typeof LabBookingStatusEnum)[keyof typeof LabBookingStatusEnum];
 
 export const DiscountTypeEnum = {
   PERCENTAGE: "PERCENTAGE",
@@ -207,43 +184,6 @@ export const returnOrderSchema = z.object({
 });
 export type ReturnOrderInput = z.infer<typeof returnOrderSchema>;
 
-// ============================================================================
-// ZOD SCHEMAS & TYPES: PRESCRIPTIONS
-// ============================================================================
-
-export const reviewPrescriptionSchema = z.object({
-  status: z.enum(["APPROVED", "REJECTED"]),
-  rejectionReason: z.string().optional(),
-  pharmacistNotes: z.string().optional(),
-});
-export type ReviewPrescriptionInput = z.infer<typeof reviewPrescriptionSchema>;
-
-// ============================================================================
-// ZOD SCHEMAS & TYPES: LAB TESTS & APPOINTMENTS
-// ============================================================================
-
-export const bookLabTestSchema = z.object({
-  labTestId: z.string().uuid(),
-  patientName: z.string().min(2).max(100),
-  patientAge: z.number().int().min(1).max(120),
-  patientGender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  addressId: z.string().uuid(),
-  sampleCollectionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format: YYYY-MM-DD"),
-  timeSlot: z.string().min(2),
-});
-export type BookLabTestInput = z.infer<typeof bookLabTestSchema>;
-
-export const bookConsultationSchema = z.object({
-  doctorId: z.string().uuid(),
-  patientName: z.string().min(2).max(100),
-  patientAge: z.number().int().min(1).max(120),
-  patientGender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  appointmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format: YYYY-MM-DD"),
-  timeSlot: z.string().min(2),
-  consultationType: z.enum(["VIDEO", "AUDIO"]).default("VIDEO"),
-  notes: z.string().max(500).optional(),
-});
-export type BookConsultationInput = z.infer<typeof bookConsultationSchema>;
 
 // ============================================================================
 // ZOD SCHEMAS & TYPES: CATALOG SEARCH & REVIEWS

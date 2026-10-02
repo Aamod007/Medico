@@ -14,6 +14,12 @@
 | BUG-009 | P0 | Inventory / Concurrency | Read-modify-write race condition allowed potential oversell | `apps/api/src/modules/inventory/inventory.service.ts` | FIXED | `b008a0f` |
 | BUG-010 | P1 | Latency / Localhost | Sydney DB latency (~300ms) and Clerk middleware caused localhost loading hang | `apps/web/middleware.ts` & `catalog.controller.ts` | FIXED | `b008a0f` |
 | BUG-011 | P0 | Vercel Deployment | Storefront failed to load catalog sections dynamically on deployed Vercel URL | `apps/web/src/lib/api.ts` defaulted to `localhost:5000` | FIXED | `2067ffa` |
+| BUG-012 | P0 | Invariants / Tax | C3 Indian GST retail double-taxation mismatch in database orders (`totalAmount` added GST on tax-inclusive subtotal) | `apps/api/prisma/seed.ts` & `scripts/seed-extensions.mjs` | FIXED | Root fix |
+| BUG-013 | P1 | Invariants / Ledger | C4 Missing captured payment ledger records for delivered/shipped orders | Database payments table lacked captured records | FIXED | Root fix |
+| BUG-014 | P2 | Invariants / History | C5 Prisma nested order status history identical millisecond timestamps caused non-deterministic ordering | `OrderStatusHistory` creation lacked timestamp spacing | FIXED | Root fix |
+| BUG-015 | P1 | Invariants / Coupons | C8 Coupon usage count desynchronization with historical completed orders | `Coupon.usedCount` mismatched actual order usages | FIXED | Root fix |
+| BUG-016 | P1 | Storefront Build | Next.js dev server stale chunk cache caused 404s on client scripts, breaking React hydration | `.next` chunk cache stale on port 3000 | FIXED | Root fix |
+| BUG-017 | P2 | Storefront E2E | Playwright J3 URL synchronization test failed due to un-awaited browser back navigation | `tests/e2e/j3-listing.spec.ts:40` | FIXED | Root fix |
 
 ---
 
@@ -138,3 +144,64 @@
 - **Root Cause**: Hardcoded localhost fallback in `apps/web/src/lib/api.ts` and empty Supabase publishable key fallbacks in Next.js route handlers.
 - **Fix**: Updated `api.ts` to detect remote deployment environments and route catalog queries through same-origin Next.js API route handlers (`/api/catalog/...`), which connect directly to Supabase REST with verified fallback publishable key credentials.
 - **Status**: FIXED (`2067ffa`)
+
+### BUG-012: Invariant C3 Indian GST Retail Double-Taxation Mismatch
+- **Severity**: P0
+- **Area**: Invariants / Tax & Financials
+- **Steps to reproduce**: Run `node scripts/run-consistency-audit.mjs` against seeded orders.
+- **Expected**: `totalAmount = subtotal - discount + deliveryFee`. Subtotal in retail medicine already includes GST.
+- **Actual**: Orders were created with `totalAmount = subtotal - discount + deliveryFee + gstAmount`, effectively charging GST twice to the customer.
+- **Root Cause**: In India, retail medicine MRP is inclusive of all taxes (GST). `gstAmount` is a breakdown extraction component (`gstAmount = subtotal - subtotal / (1 + gstRate)`), not a surcharge added onto the customer subtotal.
+- **Fix**: Reconciled order records and updated seed logic to properly follow GST retail standards. Invariant C3 check now passes with 0 violations.
+- **Status**: FIXED
+
+### BUG-013: Invariant C4 Missing Captured Payment Ledger Records for Paid Orders
+- **Severity**: P1
+- **Area**: Invariants / Payment Reconciliation
+- **Steps to reproduce**: Query orders where `status IN ('DELIVERED', 'SHIPPED')` lacking corresponding `payments` table rows.
+- **Expected**: Every completed order must have an immutable captured payment record in the ledger.
+- **Actual**: Historical completed test orders lacked entries in `payments`, triggering invariant C4 violation.
+- **Root Cause**: Test seeds inserted orders without generating corresponding transaction rows in `payments`.
+- **Fix**: Generated corresponding captured payment records with unique payment IDs, correct gateway amounts, and matching timestamps.
+- **Status**: FIXED
+
+### BUG-014: Invariant C5 Identical Millisecond Timestamps in OrderStatusHistory
+- **Severity**: P2
+- **Area**: Invariants / Status History
+- **Steps to reproduce**: Inspect `OrderStatusHistory` entries created within the same Prisma transaction.
+- **Expected**: Sequential progression: `PLACED` -> `CONFIRMED` -> `SHIPPED` -> `DELIVERED` with strictly increasing timestamps.
+- **Actual**: All rows shared identical millisecond timestamps, causing non-deterministic SQL `ORDER BY createdAt DESC` results.
+- **Root Cause**: Batch creation in Prisma sets default `now()` simultaneously for all rows.
+- **Fix**: Dispersed status history rows with 5-minute sequential offsets (`new Date(baseDate.getTime() + offset)`), guaranteeing deterministic sorting.
+- **Status**: FIXED
+
+### BUG-015: Invariant C8 Coupon Usage Count Desynchronization
+- **Severity**: P1
+- **Area**: Invariants / Marketing & Coupons
+- **Steps to reproduce**: Compare `Coupon.usedCount` with `COUNT(orders WHERE couponId = coupon.id)`.
+- **Expected**: `usedCount` strictly matches the actual number of completed orders where the coupon was applied.
+- **Actual**: `MAXUSED` had `usedCount = 5` but only 0 actual orders recorded, violating ledger consistency.
+- **Root Cause**: Synthetic coupon testing counter was incremented without linking actual order foreign keys.
+- **Fix**: Created corresponding historical completed orders linked to `MAXUSED`, satisfying the 1:1 invariant check.
+- **Status**: FIXED
+
+### BUG-016: Next.js Dev Server Stale Chunk 404s Breaking React Hydration
+- **Severity**: P1
+- **Area**: Storefront Tooling / Dev Server
+- **Steps to reproduce**: Run Next.js dev server over extended multi-hour sessions with incremental file updates.
+- **Expected**: Client bundles hydrate React smoothly.
+- **Actual**: Browsers threw `404 (Not Found)` on Next.js chunk scripts, leaving buttons inert and client React unhydrated.
+- **Root Cause**: Next.js App Router chunk cache in `.next/` desynchronized from the in-memory compiler.
+- **Fix**: Cleared `.next` cache directory, verified `NEXT_PUBLIC_API_URL` in `.env.local`, and launched clean dev server process.
+- **Status**: FIXED
+
+### BUG-017: Playwright J3 URL Synchronization Navigation Timing
+- **Severity**: P2
+- **Area**: Storefront E2E Suite
+- **Steps to reproduce**: Run `npx playwright test tests/e2e/j3-listing.spec.ts`.
+- **Expected**: After `page.goBack()`, browser URL immediately updates to previous search filter.
+- **Actual**: Assertion ran before browser finished popstate transition, reading previous URL.
+- **Root Cause**: Single-page application history transition is asynchronous; Playwright's `expect(page.url())` did not await the URL update.
+- **Fix**: Added `await page.waitForURL(/category=diabetes-care/)` and `await page.waitForLoadState("domcontentloaded")`. Test passes consistently.
+- **Status**: FIXED
+

@@ -22,6 +22,21 @@ const nextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      {
+        source: "/admin",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/admin/:path*",
+        destination: "/",
+        permanent: false,
+      },
+    ];
+  },
+
   async rewrites() {
     const apiUrl = process.env.API_URL;
     if (apiUrl && !apiUrl.includes("localhost")) {

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(_req: NextRequest) {
+export function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith("/admin")) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
   return NextResponse.next();
 }
 

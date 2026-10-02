@@ -209,7 +209,7 @@
 ### BUG-018: Missing Serverless API Handlers on Vercel Caused HTTP 404 on /api/users/addresses, /orders, and /payments
 - **Severity**: P0
 - **Area**: Production Deployment / Next.js Serverless API
-- **Steps to reproduce**: On deployed Vercel site (`https://medico-aamod.vercel.app`), go to `/checkout` and save a new address (`POST /api/users/addresses`) or place an order.
+- **Steps to reproduce**: On deployed Vercel site (`https://medico.vercel.app`), go to `/checkout` and save a new address (`POST /api/users/addresses`) or place an order.
 - **Expected**: Address saved with HTTP 201 and order created successfully in Supabase.
 - **Actual**: Vercel returned `HTTP 404 Not Found` because Next.js route handlers existed only for `/api/cart`, `/api/catalog`, and `/api/coupons`, but `/api/users/addresses`, `/api/orders`, `/api/payments/*`, and `/api/catalog/products/[slug]/substitutes` were missing.
 - **Root Cause**: `apps/web/src/app/api` lacked serverless route handlers for user addresses, orders, payment creation/verification, and product substitutes. When deployed to Vercel without an external API host, client calls fell back to `/api` routes that did not exist.

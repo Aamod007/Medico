@@ -174,6 +174,12 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     };
   });
 
+  if (sort === "price_asc") {
+    data.sort((a, b) => Number(a.defaultVariant?.price || 0) - Number(b.defaultVariant?.price || 0));
+  } else if (sort === "price_desc") {
+    data.sort((a, b) => Number(b.defaultVariant?.price || 0) - Number(a.defaultVariant?.price || 0));
+  }
+
   res.json({
     success: true,
     data,
@@ -296,3 +302,67 @@ export async function searchAutocomplete(req: Request, res: Response): Promise<v
     data: { products, categories, brands },
   });
 }
+
+export async function getProductSubstitutes(req: Request<{ slug: string }>, res: Response): Promise<void> {
+  const { slug } = req.params;
+
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    select: { id: true, composition: true, name: true },
+  });
+
+  if (!product) {
+    res.status(404).json({ success: false, message: "Product not found" });
+    return;
+  }
+
+  if (!product.composition) {
+    res.json({ success: true, data: [] });
+    return;
+  }
+
+  // Extract primary salt/ingredient before dosage or comma
+  const primarySalt = product.composition.split(/[,+]/)[0].trim().replace(/\d+\s*(mg|g|mcg|ml|%)/gi, "").trim();
+
+  const substitutes = await prisma.product.findMany({
+    where: {
+      id: { not: product.id },
+      isActive: true,
+      deletedAt: null,
+      composition: { contains: primarySalt, mode: "insensitive" },
+    },
+    take: 6,
+    include: {
+      brand: true,
+      category: true,
+      variants: {
+        where: { isActive: true },
+        take: 1,
+      },
+      reviews: {
+        where: { isApproved: true },
+        select: { rating: true },
+      },
+    },
+  });
+
+  const formatted = substitutes.map((s) => {
+    const defaultVariant = s.variants[0];
+    const avgRating = s.reviews.length ? s.reviews.reduce((acc, r) => acc + r.rating, 0) / s.reviews.length : 4.5;
+    return {
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      composition: s.composition,
+      brand: s.brand,
+      category: s.category,
+      defaultVariant,
+      rating: Number(avgRating.toFixed(1)),
+      reviewCount: s.reviews.length,
+      sameSalt: true,
+    };
+  });
+
+  res.json({ success: true, data: formatted });
+}
+

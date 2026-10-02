@@ -83,6 +83,18 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
+    // Maintain database invariant: one_default_address per user
+    if (newAddress.isDefault) {
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/Address?userId=eq.${encodeURIComponent(userId)}&isDefault=eq.true`,
+        {
+          method: "PATCH",
+          headers: getHeaders(),
+          body: JSON.stringify({ isDefault: false, updatedAt: new Date().toISOString() }),
+        }
+      );
+    }
+
     // Insert into Supabase
     const res = await fetch(`${SUPABASE_URL}/rest/v1/Address`, {
       method: "POST",
@@ -91,17 +103,25 @@ export async function POST(req: NextRequest) {
     });
 
     if (res.ok) {
-      const created = await res.json();
-      const savedAddress = created?.[0] || newAddress;
+      let savedAddress = newAddress;
+      try {
+        const text = await res.text();
+        if (text) {
+          const created = JSON.parse(text);
+          savedAddress = (Array.isArray(created) ? created[0] : created) || newAddress;
+        }
+      } catch {}
       return NextResponse.json(
         { success: true, message: "Address saved successfully", data: savedAddress },
         { status: 201 }
       );
     }
 
+    const errText = await res.text();
+    console.error("Address insertion failed:", errText);
     return NextResponse.json(
-      { success: true, message: "Address saved", data: newAddress },
-      { status: 201 }
+      { success: false, message: "Could not save address to database." },
+      { status: 500 }
     );
   } catch (error: any) {
     console.error("POST /api/users/addresses error:", error?.message);

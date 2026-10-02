@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Tag,
   ArrowRight,
+  X,
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { api } from "@/lib/api";
@@ -35,6 +36,7 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // New Address Form State
@@ -99,6 +101,7 @@ export default function CheckoutPage() {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
+    setErrorMessage(null);
     const res = await api.post("/coupons/apply", {
       code: couponCode.trim(),
       cartSubtotal: subtotal,
@@ -114,24 +117,64 @@ export default function CheckoutPage() {
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await api.post("/users/addresses", newAddress);
-    if (res.success && res.data) {
-      setAddresses([...addresses, res.data]);
-      setSelectedAddressId(res.data.id);
-      setShowAddressForm(false);
-    } else {
-      alert(res.message || "Could not save address");
+    setErrorMessage(null);
+    setIsProcessing(true);
+    try {
+      const res = await api.post("/users/addresses", newAddress);
+      if (res.success && res.data) {
+        setAddresses((prev) => [...prev, res.data]);
+        setSelectedAddressId(res.data.id);
+        setShowAddressForm(false);
+      } else {
+        setErrorMessage(res.message || "Could not save address. Please check all fields.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Could not save address");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handlePlaceOrder = async () => {
+    setErrorMessage(null);
+
     if (isLoaded && !isSignedIn) {
-      alert("Please sign in with your account to complete checkout.");
+      setErrorMessage("Please sign in with your verified account to complete checkout.");
       return;
     }
 
-    if (!selectedAddressId) {
-      alert("Please select or add a delivery address");
+    let activeAddressId = selectedAddressId;
+
+    // Auto-save address if user entered details in form without pressing Save
+    if (!activeAddressId && showAddressForm) {
+      if (
+        newAddress.fullName.trim() &&
+        newAddress.phone.trim() &&
+        newAddress.addressLine1.trim() &&
+        newAddress.city.trim() &&
+        newAddress.state.trim() &&
+        newAddress.pincode.trim()
+      ) {
+        setIsProcessing(true);
+        const saveRes = await api.post("/users/addresses", newAddress);
+        if (saveRes.success && saveRes.data?.id) {
+          activeAddressId = saveRes.data.id;
+          setAddresses((prev) => [...prev, saveRes.data]);
+          setSelectedAddressId(saveRes.data.id);
+          setShowAddressForm(false);
+        } else {
+          setIsProcessing(false);
+          setErrorMessage(saveRes.message || "Please complete all required address fields.");
+          return;
+        }
+      } else {
+        setErrorMessage("Please fill in your delivery address details.");
+        return;
+      }
+    }
+
+    if (!activeAddressId) {
+      setErrorMessage("Please select or add a delivery address.");
       return;
     }
 
@@ -140,13 +183,24 @@ export default function CheckoutPage() {
     try {
       // 1. Create order on backend
       const orderRes = await api.post("/orders", {
-        addressId: selectedAddressId,
+        addressId: activeAddressId,
         paymentMethod,
         couponCode: couponCode || undefined,
+        items: items.map((it) => ({
+          id: it.id,
+          variantId: it.variantId,
+          quantity: it.quantity,
+          price: it.price,
+          mrp: it.mrp,
+          name: it.productName,
+          packSize: it.packSize,
+          sku: it.sku,
+        })),
+        newAddress: showAddressForm ? newAddress : undefined,
       });
 
       if (!orderRes.success || !orderRes.data) {
-        alert(orderRes.message || "Failed to create order");
+        setErrorMessage(orderRes.message || "Failed to create order. Please try again.");
         setIsProcessing(false);
         return;
       }
@@ -177,7 +231,7 @@ export default function CheckoutPage() {
       });
 
       if (!payRes.success || !payRes.data) {
-        alert(payRes.message || "Could not initialize payment gateway");
+        setErrorMessage(payRes.message || "Could not initialize payment gateway");
         setIsProcessing(false);
         return;
       }
@@ -197,7 +251,7 @@ export default function CheckoutPage() {
           await clearCart();
           router.push(`/orders/${order.id}`);
         } else {
-          alert("Payment verification failed");
+          setErrorMessage("Payment verification failed");
           setIsProcessing(false);
         }
         return;
@@ -233,11 +287,11 @@ export default function CheckoutPage() {
               await clearCart();
               router.push(`/orders/${order.id}`);
             } else {
-              alert(verifyRes.message || "Payment signature verification failed");
+              setErrorMessage(verifyRes.message || "Payment signature verification failed");
               setIsProcessing(false);
             }
           } catch (verErr: any) {
-            alert(verErr.message || "Payment verification error");
+            setErrorMessage(verErr.message || "Payment verification error");
             setIsProcessing(false);
           }
         },
@@ -251,13 +305,13 @@ export default function CheckoutPage() {
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", function (failResponse: any) {
         console.error("Razorpay payment failed:", failResponse.error);
-        alert(`Payment Failed: ${failResponse.error?.description || failResponse.error?.reason || "Transaction was declined"}`);
+        setErrorMessage(`Payment Failed: ${failResponse.error?.description || failResponse.error?.reason || "Transaction was declined"}`);
         setIsProcessing(false);
       });
       rzp.open();
     } catch (err: any) {
       console.error("Checkout error:", err);
-      alert(err.message || "An error occurred during checkout");
+      setErrorMessage(err.message || "An error occurred during checkout");
       setIsProcessing(false);
     }
   };
@@ -281,6 +335,22 @@ export default function CheckoutPage() {
       <h1 className="text-2xl sm:text-3xl font-black text-[#0F2A22] mb-6">
         Secure Checkout
       </h1>
+
+      {errorMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-4 text-rose-900 transition-all">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-semibold">{errorMessage}</span>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-500 hover:text-rose-700 p-1 rounded-lg transition"
+            aria-label="Dismiss error"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {isLoaded && !isSignedIn && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -509,6 +579,12 @@ export default function CheckoutPage() {
                 <span className="text-[#0B4A3A]">₹{finalTotal.toFixed(2)}</span>
               </div>
             </div>
+
+            {errorMessage && (
+              <p className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-center mt-3">
+                {errorMessage}
+              </p>
+            )}
 
             {/* Place Order CTA */}
             <button

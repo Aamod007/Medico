@@ -50,8 +50,15 @@ export async function POST(req: NextRequest) {
           updatedAt: new Date().toISOString(),
         }),
       });
-      const newCarts = await createRes.json();
-      cartId = newCarts?.[0]?.id || newCartId;
+      let createdCartId = newCartId;
+      try {
+        const text = await createRes.text();
+        if (text) {
+          const newCarts = JSON.parse(text);
+          createdCartId = newCarts?.[0]?.id || newCartId;
+        }
+      } catch {}
+      cartId = createdCartId;
     }
 
     if (cartId) {

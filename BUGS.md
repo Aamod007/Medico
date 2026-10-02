@@ -18,10 +18,54 @@
 | BUG-014 | P2 | Invariants / History | C5 Prisma nested order status history identical millisecond timestamps caused non-deterministic ordering | `OrderStatusHistory` creation lacked timestamp spacing | FIXED | Baseline fix |
 | BUG-015 | P1 | Invariants / Coupons | C8 Coupon usage count desynchronization with historical completed orders | `Coupon.usedCount` mismatched actual order usages | FIXED | Baseline fix |
 | BUG-019 | P1 | Invariants / Seed | Invariant C4, C5, C8 and Prescription schema desynchronization in seed-extensions | `scripts/seed-extensions.mjs` and `scripts/migrate-phase1-regulatory.mjs` | FIXED | Baseline fix |
+| BUG-020 | P0 | PostgREST / JSON Parsing | Missing `Prefer: return=representation` and unsafe `res.json()` caused `Unexpected end of JSON input` popup | `apps/web/src/lib/supabase.ts:20` & `apps/web/src/app/api/users/addresses/route.ts:94` | FIXED | Current |
+| BUG-021 | P0 | Database / Address Invariant | `one_default_address` unique constraint violation prevented saving subsequent addresses | `apps/web/src/app/api/users/addresses/route.ts:81` | FIXED | Current |
+| BUG-022 | P0 | Checkout / Order Persistence | Lack of address auto-save on pay, missing client cart item forwarding, and generic swallowed error popups | `apps/web/src/app/checkout/page.tsx:127` & `apps/web/src/app/api/orders/route.ts:113` | FIXED | Current |
 
 ---
 
 ## Detailed Active & Fixed Bug Entries
+
+### BUG-020: PostgREST empty 201 body caused "Unexpected end of JSON input" popup
+- **Severity**: P0
+- **Area**: Storefront API & Checkout
+- **Steps to reproduce**: On checkout, enter address details and click "Save Address".
+- **Expected**: Address saved successfully, assigned to user, and selected for checkout.
+- **Actual**: Browser popup: `medico-aamod.vercel.app says: Unexpected end of JSON input`.
+- **Root Cause**: PostgREST POST requests return `201 Created` with empty body unless `Prefer: return=representation` is supplied. When `route.ts` executed `await res.json()`, Node threw `SyntaxError: Unexpected end of JSON input`.
+- **Fix**:
+  - Added `Prefer: "return=representation"` by default to `getSupabaseHeaders()` in `apps/web/src/lib/supabase.ts`.
+  - Added safe text-first JSON parsing with `try/catch` in `apps/web/src/lib/api.ts` and `apps/web/src/app/api/users/addresses/route.ts`.
+- **Status**: FIXED
+
+### BUG-021: Unique constraint "one_default_address" violated when adding addresses
+- **Severity**: P0
+- **Area**: User Addresses / Regulatory Invariants
+- **Steps to reproduce**: Attempt to save a new address when user already has an existing default address.
+- **Expected**: New address saved as default, previous default automatically demoted to `isDefault: false`.
+- **Actual**: PostgreSQL threw `23505 duplicate key value violates unique constraint "one_default_address"`.
+- **Root Cause**: `apps/web/src/app/api/users/addresses/route.ts` inserted new address with `isDefault: true` without demoting the existing default address for the user.
+- **Fix**: Automatically patched existing default addresses to `isDefault: false` before inserting the new default address row in `route.ts`.
+- **Status**: FIXED
+
+### BUG-022: Checkout popups "Please select or add a delivery address" and "Failed to persist order in database"
+- **Severity**: P0
+- **Area**: Storefront Checkout Flow
+- **Steps to reproduce**: Enter address details and click "Place Order", or place order with active cart items.
+- **Actual**:
+  1. If user didn't press "Save Address" first, blocked with alert `Please select or add a delivery address`.
+  2. If session cart in cookie was unlinked or addressId was unpersisted, route returned 500 `Failed to persist order in database.`
+- **Root Cause**:
+  1. `handlePlaceOrder` lacked auto-save for filled address forms.
+  2. Native blocking `alert(...)` calls degraded user experience.
+  3. `checkout/page.tsx` didn't pass client cart items to `/api/orders`, relying solely on server session cookie.
+  4. `/api/orders` failed foreign key validation if `addressId` was unlinked or if `Order_addressId_fkey` failed.
+- **Fix**:
+  - Added auto-save address functionality to `handlePlaceOrder` when address fields are filled.
+  - Forwarded client cart item variants and quantities from `useCartStore` to `/api/orders`.
+  - Added address validation and automatic fallback in `/api/orders`.
+  - Replaced browser `alert()` with modern inline dismissible error banners and contextual notifications.
+- **Status**: FIXED
 
 ### BUG-019: Invariant C4, C5, C8 and Prescription schema desynchronization in seed-extensions
 - **Severity**: P1

@@ -26,9 +26,9 @@
 | **J4: Product Details (PDP)** | Gallery, pack/variant switch, price/stock/SKU update, discount math, Rx badge, OOS behavior, pincode checker | PENDING | To test in browser |
 | **J5: Authentication** | Register, OTP, login, logout, password reset, session persistence, guest cart merge | PENDING | To test in browser |
 | **J6: Cart & Pricing** | Add, increase, decrease, remove, stock cap, save for later, tab persistence, coupons, totals math & GST | PENDING | To test in browser |
-| **J7: Checkout Flow** | Address add/edit/delete/default, pincode & phone validation, non-serviceable block, slot selection, summary | PENDING | To test in browser |
+| **J7: Checkout Flow** | Address add/edit/delete/default, pincode & phone validation, non-serviceable block, slot selection, summary | PASSED / FIXED | Fixed address auto-save, `one_default_address` index demote, empty 201 JSON parsing, and order persistence (BUG-020, BUG-021, BUG-022) |
 | **J8: Razorpay Payments** | Test card, UPI success, failure@razorpay retry, modal close, double-click prevention, back/refresh handling | PENDING | To test in browser |
-| **J9: COD Payment** | Cash on Delivery limits and Rx compliance validation | PENDING | To test in browser |
+| **J9: COD Payment** | Cash on Delivery limits, address association, and order persistence | PASSED / FIXED | Verified end-to-end order placement with cart items payload and zero DB constraint errors |
 | **J10: Prescriptions** | Valid JPG/PDF, oversized/wrong type/empty, pharmacist approval flow, rejection and re-upload | PENDING | To test in browser |
 | **J11: Order Management** | Confirmation page, history, detail, status timeline, PDF invoice math, cancel rules, reorder | PENDING | To test in browser |
 | **J12: Account & Wishlist** | Profile, address book, saved prescriptions, wishlist, notifications persistence | PENDING | To test in browser |

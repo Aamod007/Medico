@@ -78,13 +78,29 @@ export async function fetchApi<T = any>(
         } catch {}
       }
       const text = await res.text();
+      let fallbackJson: any = null;
+      try {
+        fallbackJson = text ? JSON.parse(text) : null;
+      } catch {}
+      if (fallbackJson && typeof fallbackJson === "object") {
+        return fallbackJson;
+      }
       console.error("Non-JSON response received:", text.substring(0, 200));
       throw new Error(
         `Server returned non-JSON response (${res.status}).`
       );
     }
 
-    const json = await res.json();
+    const text = await res.text();
+    let json: any = {};
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = { success: res.ok, message: text.substring(0, 150) };
+      }
+    }
+
     if (!res.ok) {
       // If remote returned not-ok and we have a local Next.js route fallback for catalog:
       if (baseUrl !== "/api" && cleanEndpoint.startsWith("/catalog")) {

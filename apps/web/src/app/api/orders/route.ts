@@ -110,11 +110,77 @@ export async function POST(req: NextRequest) {
     // Ensure the User record exists in PostgreSQL to satisfy Order_userId_fkey
     await ensureUserExistsInDb(userId, email, name, phone);
 
+    // Verify Address exists to satisfy Order_addressId_fkey
+    let finalAddressId = addressId;
+    const addrCheck = await fetch(
+      `${SUPABASE_URL}/rest/v1/Address?id=eq.${encodeURIComponent(addressId)}&select=id`,
+      { headers: getHeaders(), cache: "no-store" }
+    );
+    const existingAddrs = addrCheck.ok ? await addrCheck.json() : [];
+
+    if (!existingAddrs || existingAddrs.length === 0) {
+      // Look up any existing address for this user
+      const userAddrCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/Address?userId=eq.${encodeURIComponent(userId)}&order=isDefault.desc,createdAt.desc&limit=1`,
+        { headers: getHeaders(), cache: "no-store" }
+      );
+      const userAddrs = userAddrCheck.ok ? await userAddrCheck.json() : [];
+      if (userAddrs?.[0]?.id) {
+        finalAddressId = userAddrs[0].id;
+      } else if (body.newAddress?.fullName && body.newAddress?.addressLine1) {
+        // Auto-create address record from body
+        const newAddrId = crypto.randomUUID();
+        const createAddrRes = await fetch(`${SUPABASE_URL}/rest/v1/Address`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            id: newAddrId,
+            userId,
+            fullName: String(body.newAddress.fullName).trim(),
+            phone: String(body.newAddress.phone || phone || "9999999999").trim(),
+            addressLine1: String(body.newAddress.addressLine1).trim(),
+            city: String(body.newAddress.city || "Sitapur").trim(),
+            state: String(body.newAddress.state || "Punjab").trim(),
+            pincode: String(body.newAddress.pincode || "261001").trim(),
+            type: body.newAddress.type || "HOME",
+            isDefault: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }),
+        });
+        if (createAddrRes.ok) {
+          finalAddressId = newAddrId;
+        }
+      }
+    }
+
     // 1. Fetch Cart and CartItems
     let items: any[] = [];
     let cartId: string | null = null;
 
-    if (sessionId) {
+    // A. Use client items payload if provided
+    if (Array.isArray(body.items) && body.items.length > 0) {
+      for (const clientItem of body.items) {
+        if (!clientItem?.variantId) continue;
+        const vRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/ProductVariant?id=eq.${encodeURIComponent(clientItem.variantId)}&select=id,sku,name,packSize,price,mrp,product:Product(name,slug,gstRate)&limit=1`,
+          { headers: getHeaders() }
+        );
+        if (vRes.ok) {
+          const variants = await vRes.json();
+          if (variants?.[0]) {
+            items.push({
+              id: clientItem.id || crypto.randomUUID(),
+              quantity: Math.max(1, Number(clientItem.quantity) || 1),
+              variant: variants[0],
+            });
+          }
+        }
+      }
+    }
+
+    // B. Check session cart in Supabase
+    if (items.length === 0 && sessionId) {
       const cartRes = await fetch(
         `${SUPABASE_URL}/rest/v1/Cart?sessionId=eq.${sessionId}&select=id,items:CartItem(id,quantity,variant:ProductVariant(id,sku,name,packSize,price,mrp,product:Product(name,slug,gstRate)))`,
         { headers: getHeaders(), cache: "no-store" }
@@ -128,7 +194,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If session cart is empty, fall back to active product catalog variant
+    // C. Fall back to active product catalog variant if still empty
     if (items.length === 0) {
       const fallbackVariantRes = await fetch(
         `${SUPABASE_URL}/rest/v1/ProductVariant?isActive=eq.true&select=id,sku,name,packSize,price,mrp,product:Product(name,slug,gstRate)&limit=1`,
@@ -214,7 +280,7 @@ export async function POST(req: NextRequest) {
       id: orderId,
       orderNumber,
       userId,
-      addressId,
+      addressId: finalAddressId,
       status: "PLACED",
       subtotal: Math.round(subtotal * 100) / 100,
       discount: Math.round(discount * 100) / 100,
@@ -240,8 +306,13 @@ export async function POST(req: NextRequest) {
     if (!orderInsertRes.ok) {
       const errText = await orderInsertRes.text();
       console.error("Order insertion failed:", errText);
+      let errMsg = "Failed to persist order in database.";
+      try {
+        const parsed = JSON.parse(errText);
+        errMsg = parsed.message || parsed.details || errMsg;
+      } catch {}
       return NextResponse.json(
-        { success: false, message: "Failed to persist order in database." },
+        { success: false, message: errMsg },
         { status: 500 }
       );
     }

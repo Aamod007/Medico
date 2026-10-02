@@ -20,6 +20,7 @@ export function getSupabaseHeaders(customHeaders: Record<string, string> = {}) {
     apikey: key,
     Authorization: `Bearer ${key}`,
     "Content-Type": "application/json",
+    Prefer: "return=representation",
     ...customHeaders,
   };
 }

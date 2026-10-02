@@ -2,6 +2,8 @@
   "name": "@medico/shared",
   "version": "1.0.0",
   "private": true,
+  "author": "Pharmico Healthcare Private Limited",
+  "license": "UNLICENSED",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "types": "./src/index.ts",

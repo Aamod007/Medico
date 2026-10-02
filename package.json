@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "description": "Production-grade medical e-commerce platform and online pharmacy",
+  "author": "Pharmico Healthcare Private Limited",
+  "license": "UNLICENSED",
   "workspaces": [
     "apps/*",
     "packages/*"

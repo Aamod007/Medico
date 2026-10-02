@@ -19,4 +19,5 @@ COPY --from=base /app/packages/shared ./packages/shared
 COPY --from=base /app/apps/api ./apps/api
 
 EXPOSE 5000
+USER node
 CMD ["npm", "run", "start", "-w", "@medico/api"]

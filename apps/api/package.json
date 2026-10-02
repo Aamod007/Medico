@@ -2,6 +2,8 @@
   "name": "@medico/api",
   "version": "1.0.0",
   "private": true,
+  "author": "Pharmico Healthcare Private Limited",
+  "license": "UNLICENSED",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

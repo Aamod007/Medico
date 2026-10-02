@@ -19,4 +19,5 @@ COPY --from=base /app/packages/shared ./packages/shared
 COPY --from=base /app/apps/web ./apps/web
 
 EXPOSE 3000
+USER node
 CMD ["npm", "run", "start", "-w", "@medico/web"]

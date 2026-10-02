@@ -1,3 +1,12 @@
+/**
+ * Script: run-consistency-audit.mjs
+ * Purpose: Executes the global database consistency invariant queries (C1–C15)
+ *          defined in consistency-audit.sql against PostgreSQL via Prisma.
+ * Usage: npm run test:consistency
+ * Arguments: None
+ * Safety: Read-only SELECT queries only. 100% non-destructive. Safe to run in production.
+ */
+
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";

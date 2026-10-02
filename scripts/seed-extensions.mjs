@@ -1,3 +1,13 @@
+/**
+ * Script: seed-extensions.mjs
+ * Purpose: Populates secondary test fixtures (customer accounts, mock orders,
+ *          prescriptions, addresses, and discount coupons) for end-to-end QA testing.
+ * Usage: node scripts/seed-extensions.mjs
+ * Arguments: None
+ * Prerequisites: Base database schema and primary seed must be loaded first (npm run db:seed).
+ * Safety: Idempotent upserts. Does not truncate tables or delete existing user data.
+ */
+
 import { PrismaClient, Role, AddressType, DiscountType, OrderStatus, PaymentStatus, PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

@@ -7,7 +7,8 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  ci:
+    name: Build, Lint & Automated Verification
     runs-on: ubuntu-latest
 
     services:
@@ -41,5 +42,23 @@ jobs:
       - name: Generate Prisma Client
         run: npm run db:generate
 
-      - name: Run Core Unit Tests
-        run: node scripts/unit-tests.js
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Push Database Schema for Testing
+        run: npm run db:push
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/medico_db?schema=public
+
+      - name: Run API Security & Concurrency Tests
+        run: npm run test:api
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/medico_db?schema=public
+          JWT_ACCESS_SECRET: "super-secure-jwt-access-secret-min-32-chars-for-medico"
+          RAZORPAY_WEBHOOK_SECRET: "test_webhook_secret_key_123"
+
+      - name: Build Packages & Apps
+        run: npm run build

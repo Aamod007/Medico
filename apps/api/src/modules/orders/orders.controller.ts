@@ -206,7 +206,11 @@ export async function createOrder(
     message: "Order placed successfully",
     data: order,
   });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes("Insufficient stock")) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
     next(error);
   }
 }

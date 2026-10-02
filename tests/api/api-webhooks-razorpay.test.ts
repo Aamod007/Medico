@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import crypto from "crypto";
 
 const API_BASE = "http://localhost:5000/api";
-const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "test_secret_for_webhook_verification_only";
+const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "YourWebhookSecretHere";
 
 function makeSignature(body: string, secret: string) {
   return crypto.createHmac("sha256", secret).update(body).digest("hex");
@@ -27,7 +27,7 @@ describe("Razorpay Webhooks & Payment Security", () => {
 
     const badSig = "invalid_signature_hex_digest_fake_123456789";
 
-    const res = await fetch(`${API_BASE}/webhooks/razorpay`, {
+    const res = await fetch(`${API_BASE}/payments/webhook`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -58,7 +58,7 @@ describe("Razorpay Webhooks & Payment Security", () => {
     const validSig = makeSignature(payload, WEBHOOK_SECRET);
 
     // First attempt
-    const res1 = await fetch(`${API_BASE}/webhooks/razorpay`, {
+    const res1 = await fetch(`${API_BASE}/payments/webhook`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +69,7 @@ describe("Razorpay Webhooks & Payment Security", () => {
     expect([200, 400, 404]).toContain(res1.status);
 
     // Second attempt (duplicate webhook) must not crash or create duplicate side effects
-    const res2 = await fetch(`${API_BASE}/webhooks/razorpay`, {
+    const res2 = await fetch(`${API_BASE}/payments/webhook`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

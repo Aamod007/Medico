@@ -38,6 +38,16 @@ interface CartState {
   clearCart: () => Promise<void>;
 }
 
+function recalcTotals(items: CartItemData[]) {
+  const itemCount = items.reduce((acc, it) => acc + it.quantity, 0);
+  const subtotal = items.reduce((acc, it) => acc + it.subtotal, 0);
+  const mrpTotal = items.reduce((acc, it) => acc + (it.mrp || it.price) * it.quantity, 0);
+  const discount = Math.max(0, mrpTotal - subtotal);
+  const deliveryFee = subtotal >= 500 || items.length === 0 ? 0 : 40;
+  const totalAmount = subtotal + deliveryFee;
+  return { itemCount, subtotal, mrpTotal, discount, deliveryFee, totalAmount };
+}
+
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
@@ -57,17 +67,27 @@ export const useCartStore = create<CartState>()(
       fetchCart: async () => {
         try {
           const res = await api.get("/cart");
-          if (res.success && res.data) {
+          if (res.success && res.data && res.data.items && res.data.items.length > 0) {
+            // Server has real items - replace local state
+            const serverItems: CartItemData[] = res.data.items.map((it: any) => ({
+              id: it.id,
+              variantId: it.variantId,
+              productId: it.productId || "",
+              productName: it.productName || it.name || "Healthcare Essential",
+              productSlug: it.productSlug || it.slug || "",
+              image: it.image || "",
+              packSize: it.packSize || "Standard Pack",
+              price: Number(it.price || 0),
+              mrp: Number(it.mrp || it.price || 0),
+              quantity: it.quantity,
+              subtotal: Number(it.subtotal || it.itemSubtotal || (it.price || 0) * it.quantity),
+            }));
             set({
-              items: res.data.items && res.data.items.length > 0 ? res.data.items : get().items,
-              itemCount: res.data.itemCount ?? get().items.reduce((a, b) => a + b.quantity, 0),
-              subtotal: res.data.subtotal ?? get().subtotal,
-              mrpTotal: res.data.mrpTotal ?? get().mrpTotal,
-              discount: res.data.discount ?? get().discount,
-              deliveryFee: res.data.deliveryFee ?? get().deliveryFee,
-              totalAmount: res.data.totalAmount ?? get().totalAmount,
+              items: serverItems,
+              ...recalcTotals(serverItems),
             });
           }
+          // If server returns empty items, keep local state (offline resilience)
         } catch (e) {
           console.warn("Cart fetch fallback to local storage:", e);
         }
@@ -84,49 +104,38 @@ export const useCartStore = create<CartState>()(
           currentItems[existingIdx].quantity += quantity;
           currentItems[existingIdx].subtotal = currentItems[existingIdx].price * currentItems[existingIdx].quantity;
         } else {
+          const price = itemDetails?.price || 0;
+          const mrp = itemDetails?.mrp || price;
           currentItems.push({
-            id: `item_${Date.now()}`,
+            id: `local_${Date.now()}`,
             variantId,
             productId: itemDetails?.productId || "",
-            productName: itemDetails?.productName || "Essential Medicine",
+            productName: itemDetails?.productName || "Adding...",
             productSlug: itemDetails?.productSlug || "",
             image: itemDetails?.image || "",
             packSize: itemDetails?.packSize || "Standard Pack",
             sku: itemDetails?.sku || "",
-            price: itemDetails?.price || 150,
-            mrp: itemDetails?.mrp || 180,
+            price,
+            mrp,
             quantity,
-            subtotal: (itemDetails?.price || 150) * quantity,
+            subtotal: price * quantity,
             availableStock: 50,
             isOutOfStock: false,
           });
         }
 
-        const itemCount = currentItems.reduce((acc, it) => acc + it.quantity, 0);
-        const subtotal = currentItems.reduce((acc, it) => acc + it.subtotal, 0);
-        const mrpTotal = currentItems.reduce((acc, it) => acc + (it.mrp || it.price) * it.quantity, 0);
-        const discount = Math.max(0, mrpTotal - subtotal);
-        const deliveryFee = subtotal >= 500 || currentItems.length === 0 ? 0 : 40;
-        const totalAmount = subtotal + deliveryFee;
-
         set({
           items: currentItems,
-          itemCount,
-          subtotal,
-          mrpTotal,
-          discount,
-          deliveryFee,
-          totalAmount,
+          ...recalcTotals(currentItems),
           isDrawerOpen: true,
           isLoading: false,
         });
 
         // Background server sync
         try {
-          const res = await api.post("/cart/items", { variantId, quantity });
-          if (res.success) {
-            get().fetchCart().catch(() => {});
-          }
+          await api.post("/cart/items", { variantId, quantity });
+          // Refresh from server to get real IDs and data
+          await get().fetchCart();
         } catch (e) {
           console.warn("Background cart sync failed, retained in local storage:", e);
         }
@@ -147,21 +156,9 @@ export const useCartStore = create<CartState>()(
           currentItems[idx].subtotal = currentItems[idx].price * quantity;
         }
 
-        const itemCount = currentItems.reduce((acc, it) => acc + it.quantity, 0);
-        const subtotal = currentItems.reduce((acc, it) => acc + it.subtotal, 0);
-        const mrpTotal = currentItems.reduce((acc, it) => acc + (it.mrp || it.price) * it.quantity, 0);
-        const discount = Math.max(0, mrpTotal - subtotal);
-        const deliveryFee = subtotal >= 500 || currentItems.length === 0 ? 0 : 40;
-        const totalAmount = subtotal + deliveryFee;
-
         set({
           items: currentItems,
-          itemCount,
-          subtotal,
-          mrpTotal,
-          discount,
-          deliveryFee,
-          totalAmount,
+          ...recalcTotals(currentItems),
         });
 
         try {
@@ -173,21 +170,9 @@ export const useCartStore = create<CartState>()(
 
       removeItem: async (itemId: string) => {
         const currentItems = get().items.filter((it) => it.id !== itemId && it.variantId !== itemId);
-        const itemCount = currentItems.reduce((acc, it) => acc + it.quantity, 0);
-        const subtotal = currentItems.reduce((acc, it) => acc + it.subtotal, 0);
-        const mrpTotal = currentItems.reduce((acc, it) => acc + (it.mrp || it.price) * it.quantity, 0);
-        const discount = Math.max(0, mrpTotal - subtotal);
-        const deliveryFee = subtotal >= 500 || currentItems.length === 0 ? 0 : 40;
-        const totalAmount = subtotal + deliveryFee;
-
         set({
           items: currentItems,
-          itemCount,
-          subtotal,
-          mrpTotal,
-          discount,
-          deliveryFee,
-          totalAmount,
+          ...recalcTotals(currentItems),
         });
 
         try {
@@ -217,6 +202,15 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "pharmico-cart-storage",
+      partialize: (state) => ({
+        items: state.items,
+        itemCount: state.itemCount,
+        subtotal: state.subtotal,
+        mrpTotal: state.mrpTotal,
+        discount: state.discount,
+        deliveryFee: state.deliveryFee,
+        totalAmount: state.totalAmount,
+      }),
     }
   )
 );

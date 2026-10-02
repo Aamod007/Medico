@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "variantId is required" }, { status: 400 });
     }
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     let sessionId = cookieStore.get("cartSessionId")?.value;
 
     let response = NextResponse.json({ success: true, message: "Item added to cart" });
@@ -44,13 +45,18 @@ export async function POST(req: NextRequest) {
     let cartId = carts?.[0]?.id;
 
     if (!cartId) {
+      const newCartId = crypto.randomUUID();
       const createRes = await fetch(`${SUPABASE_URL}/rest/v1/Cart`, {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({
+          id: newCartId,
+          sessionId,
+          updatedAt: new Date().toISOString(),
+        }),
       });
       const newCarts = await createRes.json();
-      cartId = newCarts?.[0]?.id;
+      cartId = newCarts?.[0]?.id || newCartId;
     }
 
     if (cartId) {
@@ -66,14 +72,23 @@ export async function POST(req: NextRequest) {
         await fetch(`${SUPABASE_URL}/rest/v1/CartItem?id=eq.${items[0].id}`, {
           method: "PATCH",
           headers: getHeaders(),
-          body: JSON.stringify({ quantity: items[0].quantity + quantity }),
+          body: JSON.stringify({
+            quantity: items[0].quantity + quantity,
+            updatedAt: new Date().toISOString(),
+          }),
         });
       } else {
-        // Insert new item
+        // Insert new item with UUID
         await fetch(`${SUPABASE_URL}/rest/v1/CartItem`, {
           method: "POST",
           headers: getHeaders(),
-          body: JSON.stringify({ cartId, variantId, quantity }),
+          body: JSON.stringify({
+            id: crypto.randomUUID(),
+            cartId,
+            variantId,
+            quantity,
+            updatedAt: new Date().toISOString(),
+          }),
         });
       }
     }

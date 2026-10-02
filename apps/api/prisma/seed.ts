@@ -129,7 +129,7 @@ async function main() {
       name: "Personal Care",
       slug: "personal-care",
       description: "Dermatological skincare, hair treatments, and personal hygiene essentials",
-      image: "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=300&auto=format&fit=crop&q=80",
+      image: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&auto=format&fit=crop&q=80",
       icon: "HeartHandshake",
       sortOrder: 4,
     },
@@ -372,7 +372,7 @@ async function main() {
       brandSlug: "himalaya-wellness",
       categorySlug: "everyday-essentials",
       images: [
-        "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: true,
       isBestSeller: true,
@@ -880,7 +880,7 @@ async function main() {
       brandSlug: "glenmark",
       categorySlug: "personal-care",
       images: [
-        "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80",
         "https://images.unsplash.com/photo-1584362917165-526a968579e8?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: true,
@@ -932,7 +932,7 @@ async function main() {
       brandSlug: "sun-pharma",
       categorySlug: "personal-care",
       images: [
-        "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: true,
       isBestSeller: true,
@@ -982,7 +982,7 @@ async function main() {
       brandSlug: "mankind",
       categorySlug: "personal-care",
       images: [
-        "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: false,
       isBestSeller: false,
@@ -1032,7 +1032,7 @@ async function main() {
       brandSlug: "torrent",
       categorySlug: "personal-care",
       images: [
-        "https://images.unsplash.com/photo-1608248597359-bb58331d248b?w=600&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80",
       ],
       isFeatured: false,
       isBestSeller: true,

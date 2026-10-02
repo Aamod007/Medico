@@ -218,7 +218,15 @@ export default function ProductDetailPage() {
             </div>
 
             <button
-              onClick={() => selectedVariant && addItem(selectedVariant.id, quantity)}
+              onClick={() => selectedVariant && addItem(selectedVariant.id, quantity, {
+                        productId: product.id,
+                        productName: product.name,
+                        productSlug: product.slug,
+                        image: product.images?.[0] || "",
+                        packSize: selectedVariant.packSize || selectedVariant.name || "Standard Pack",
+                        price: selectedVariant.price,
+                        mrp: selectedVariant.mrp || selectedVariant.price,
+                      })}
               className="flex-1 sm:flex-initial px-8 py-3.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] font-black text-sm shadow-md transition"
             >
               Add to Cart
@@ -226,7 +234,15 @@ export default function ProductDetailPage() {
 
             <Link
               href="/checkout"
-              onClick={() => selectedVariant && addItem(selectedVariant.id, quantity)}
+              onClick={() => selectedVariant && addItem(selectedVariant.id, quantity, {
+                        productId: product.id,
+                        productName: product.name,
+                        productSlug: product.slug,
+                        image: product.images?.[0] || "",
+                        packSize: selectedVariant.packSize || selectedVariant.name || "Standard Pack",
+                        price: selectedVariant.price,
+                        mrp: selectedVariant.mrp || selectedVariant.price,
+                      })}
               className="flex-1 sm:flex-initial px-8 py-3.5 rounded-full bg-[#10B981] hover:bg-[#0ea372] text-white font-bold text-sm shadow-md transition"
             >
               Buy Now

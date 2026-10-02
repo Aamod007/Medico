@@ -16,7 +16,7 @@ function getHeaders() {
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionId = cookieStore.get("cartSessionId")?.value;
 
     if (!sessionId) {
@@ -62,17 +62,19 @@ export async function GET(req: NextRequest) {
       id: it.id,
       variantId: it.variant?.id,
       quantity: it.quantity,
-      name: it.variant?.product?.name || it.variant?.name,
-      slug: it.variant?.product?.slug,
+      productName: it.variant?.product?.name || it.variant?.name || "Healthcare Essential",
+      name: it.variant?.product?.name || it.variant?.name || "Healthcare Essential",
+      productSlug: it.variant?.product?.slug || "",
       image: it.variant?.product?.images?.[0] || "",
-      packSize: it.variant?.packSize,
+      packSize: it.variant?.packSize || "Standard Pack",
       price: Number(it.variant?.price || 0),
       mrp: Number(it.variant?.mrp || it.variant?.price || 0),
+      subtotal: Number(it.variant?.price || 0) * it.quantity,
       itemSubtotal: Number(it.variant?.price || 0) * it.quantity,
     }));
 
     const itemCount = items.reduce((acc: number, it: any) => acc + it.quantity, 0);
-    const subtotal = items.reduce((acc: number, it: any) => acc + it.itemSubtotal, 0);
+    const subtotal = items.reduce((acc: number, it: any) => acc + it.subtotal, 0);
     const mrpTotal = items.reduce((acc: number, it: any) => acc + it.mrp * it.quantity, 0);
     const discount = Math.max(0, mrpTotal - subtotal);
     const deliveryFee = subtotal >= 500 || items.length === 0 ? 0 : 40;
@@ -110,7 +112,7 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE() {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionId = cookieStore.get("cartSessionId")?.value;
 
     if (sessionId) {

@@ -518,7 +518,15 @@ export default function HomePage() {
                     </div>
 
                     <button
-                      onClick={() => defVariant && addItem(defVariant.id)}
+                      onClick={() => defVariant && addItem(defVariant.id, 1, {
+                        productId: p.id,
+                        productName: p.name,
+                        productSlug: p.slug,
+                        image: p.images?.[0] || "",
+                        packSize: defVariant.packSize || defVariant.name || "Standard Pack",
+                        price: defVariant.price,
+                        mrp: defVariant.mrp || defVariant.price,
+                      })}
                       className="w-full sm:w-auto px-3 sm:px-4 py-1.5 rounded-full bg-[#F5C043] hover:bg-[#eab334] text-[#0F2A22] text-[11px] sm:text-xs font-bold transition shadow-sm text-center"
                     >
                       Add to Cart

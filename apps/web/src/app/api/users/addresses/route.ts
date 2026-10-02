@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser, ensureUserExistsInDb } from "@/lib/server-auth";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
 const { url: SUPABASE_URL } = getSupabaseConfig();
-
-const DEFAULT_USER_ID = "3cb3a440-1b17-4a0e-b787-05752b228d35";
 
 function getHeaders() {
   return getSupabaseHeaders();
@@ -15,31 +13,23 @@ function getHeaders() {
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value || DEFAULT_USER_ID;
+    const userCtx = await getAuthenticatedUser(req);
+    const { userId } = userCtx;
 
-    // Fetch user addresses from Supabase
+    // Strict privacy: if not authenticated, do not return any user's addresses
+    if (!userId) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    // Fetch user addresses from Supabase scoped to this user only
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/Address?userId=eq.${userId}&order=isDefault.desc,createdAt.desc`,
+      `${SUPABASE_URL}/rest/v1/Address?userId=eq.${encodeURIComponent(userId)}&order=isDefault.desc,createdAt.desc`,
       { headers: getHeaders(), cache: "no-store" }
     );
 
     if (res.ok) {
       const addresses = await res.json();
-      if (addresses && addresses.length > 0) {
-        return NextResponse.json({ success: true, data: addresses });
-      }
-    }
-
-    // Fallback: fetch any default addresses in database
-    const fallbackRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/Address?order=isDefault.desc,createdAt.desc&limit=5`,
-      { headers: getHeaders(), cache: "no-store" }
-    );
-
-    if (fallbackRes.ok) {
-      const allAddresses = await fallbackRes.json();
-      return NextResponse.json({ success: true, data: allAddresses || [] });
+      return NextResponse.json({ success: true, data: addresses || [] });
     }
 
     return NextResponse.json({ success: true, data: [] });
@@ -51,6 +41,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const userCtx = await getAuthenticatedUser(req);
+    const { userId, email, name, phone: clerkPhone } = userCtx;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: "Please sign in to save a delivery address." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { fullName, phone, addressLine1, addressLine2, landmark, city, state, pincode, type, isDefault } = body;
 
@@ -61,8 +61,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value || DEFAULT_USER_ID;
+    // Ensure User row exists in DB
+    await ensureUserExistsInDb(userId, email, fullName || name, phone || clerkPhone);
+
     const addressId = crypto.randomUUID();
 
     const newAddress = {
@@ -98,7 +99,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // In case Supabase returned non-200, return the valid formatted address object so client flow is unblocked
     return NextResponse.json(
       { success: true, message: "Address saved", data: newAddress },
       { status: 201 }

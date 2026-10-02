@@ -22,9 +22,12 @@ declare global {
   }
 }
 
+import { useUser, SignInButton } from "@clerk/nextjs";
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotal, deliveryFee, totalAmount, clearCart } = useCartStore();
+  const { isSignedIn, isLoaded, user } = useUser();
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -37,14 +40,15 @@ export default function CheckoutPage() {
   // New Address Form State
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({
-    fullName: "Jacob Jones",
-    phone: "9876543212",
-    addressLine1: "Flat 402, Green Glen Layout, Bellandur",
+    fullName: "",
+    phone: "",
+    addressLine1: "",
     city: "Bangalore",
     state: "Karnataka",
-    pincode: "560103",
+    pincode: "",
     type: "HOME",
   });
+
 
   useEffect(() => {
     // Check localStorage for saved location from Header
@@ -79,7 +83,19 @@ export default function CheckoutPage() {
     }
 
     loadUserData();
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      const name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "";
+      const ph = user.primaryPhoneNumber?.phoneNumber || "";
+      setNewAddress((prev) => ({
+        ...prev,
+        fullName: prev.fullName || name,
+        phone: prev.phone || ph,
+      }));
+    }
+  }, [user]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -109,6 +125,11 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
+    if (isLoaded && !isSignedIn) {
+      alert("Please sign in with your account to complete checkout.");
+      return;
+    }
+
     if (!selectedAddressId) {
       alert("Please select or add a delivery address");
       return;
@@ -132,12 +153,23 @@ export default function CheckoutPage() {
 
       const order = orderRes.data;
 
+      // Track placed order locally in browser for instant user order scoping
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("medico_placed_order_ids");
+          const existing: string[] = raw ? JSON.parse(raw) : [];
+          const updated = Array.from(new Set([...existing, order.id, order.orderNumber]));
+          localStorage.setItem("medico_placed_order_ids", JSON.stringify(updated));
+        } catch {}
+      }
+
       // 2. Handle Payment Flow
       if (paymentMethod === "COD") {
         await clearCart();
         router.push(`/orders/${order.id}`);
         return;
       }
+
 
       // Online payment via Razorpay
       const payRes = await api.post("/payments/create-order", {
@@ -249,6 +281,22 @@ export default function CheckoutPage() {
       <h1 className="text-2xl sm:text-3xl font-black text-[#0F2A22] mb-6">
         Secure Checkout
       </h1>
+
+      {isLoaded && !isSignedIn && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <span className="text-xs sm:text-sm font-semibold text-amber-900">
+              Please sign in with your verified account to place your order and track delivery.
+            </span>
+          </div>
+          <SignInButton mode="modal">
+            <button className="px-5 py-2 bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold rounded-full transition shadow-sm whitespace-nowrap cursor-pointer">
+              Sign In Now
+            </button>
+          </SignInButton>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Delivery Address, Rx, Payment Method */}

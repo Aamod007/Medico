@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
+import { getAuthenticatedUser, ensureUserExistsInDb } from "@/lib/server-auth";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 
@@ -7,28 +8,68 @@ export const dynamic = "force-dynamic";
 
 const { url: SUPABASE_URL } = getSupabaseConfig();
 
-const DEFAULT_USER_ID = "3cb3a440-1b17-4a0e-b787-05752b228d35";
-
 function getHeaders() {
   return getSupabaseHeaders();
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value || DEFAULT_USER_ID;
+    const userCtx = await getAuthenticatedUser(req);
+    const { userId, placedOrderIds } = userCtx;
 
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/Order?userId=eq.${userId}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
-      { headers: getHeaders(), cache: "no-store" }
-    );
-
-    if (res.ok) {
-      const orders = await res.json();
-      return NextResponse.json({ success: true, data: orders || [] });
+    // Strict privacy guarantee: if unauthenticated and has no placed session orders, return empty list
+    if (!userId && placedOrderIds.length === 0) {
+      return NextResponse.json({ success: true, data: [] });
     }
 
-    return NextResponse.json({ success: true, data: [] });
+    const orderMap = new Map<string, any>();
+
+    // 1. Fetch orders belonging directly to this authenticated user
+    if (userId) {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/Order?userId=eq.${encodeURIComponent(userId)}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
+        { headers: getHeaders(), cache: "no-store" }
+      );
+
+      if (res.ok) {
+        const userOrders = await res.json();
+        if (Array.isArray(userOrders)) {
+          for (const order of userOrders) {
+            orderMap.set(order.id, order);
+          }
+        }
+      }
+    }
+
+    // 2. Fetch any session-placed orders (only those verified in user's browser cookie)
+    if (placedOrderIds.length > 0) {
+      const validUuids = placedOrderIds.filter((id) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      );
+
+      if (validUuids.length > 0) {
+        const inFilter = `(${validUuids.map((id) => `"${id}"`).join(",")})`;
+        const placedRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/Order?id=in.${inFilter}&select=*,items:OrderItem(*),address:Address(*)&order=createdAt.desc`,
+          { headers: getHeaders(), cache: "no-store" }
+        );
+
+        if (placedRes.ok) {
+          const placedOrders = await placedRes.json();
+          if (Array.isArray(placedOrders)) {
+            for (const order of placedOrders) {
+              orderMap.set(order.id, order);
+            }
+          }
+        }
+      }
+    }
+
+    const finalOrders = Array.from(orderMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    return NextResponse.json({ success: true, data: finalOrders });
   } catch (error: any) {
     console.error("GET /api/orders error:", error?.message);
     return NextResponse.json({ success: true, data: [] });
@@ -37,16 +78,37 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const userCtx = await getAuthenticatedUser(req);
+    const { userId, email, name, phone, placedOrderIds } = userCtx;
+
+    // Require authentication: user must be signed in to place an order
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: "Please sign in to place your order." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
-    const { addressId, paymentMethod = "RAZORPAY", couponCode, deliverySlot = "Standard Next-Day (9 AM - 9 PM)" } = body;
+    const {
+      addressId,
+      paymentMethod = "RAZORPAY",
+      couponCode,
+      deliverySlot = "Standard Next-Day (9 AM - 9 PM)",
+    } = body;
 
     const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value || DEFAULT_USER_ID;
     const sessionId = cookieStore.get("cartSessionId")?.value;
 
     if (!addressId) {
-      return NextResponse.json({ success: false, message: "Delivery address is required." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Delivery address is required." },
+        { status: 400 }
+      );
     }
+
+    // Ensure the User record exists in PostgreSQL to satisfy Order_userId_fkey
+    await ensureUserExistsInDb(userId, email, name, phone);
 
     // 1. Fetch Cart and CartItems
     let items: any[] = [];
@@ -169,11 +231,20 @@ export async function POST(req: NextRequest) {
     };
 
     // Insert Order into Supabase
-    await fetch(`${SUPABASE_URL}/rest/v1/Order`, {
+    const orderInsertRes = await fetch(`${SUPABASE_URL}/rest/v1/Order`, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(orderRecord),
     });
+
+    if (!orderInsertRes.ok) {
+      const errText = await orderInsertRes.text();
+      console.error("Order insertion failed:", errText);
+      return NextResponse.json(
+        { success: false, message: "Failed to persist order in database." },
+        { status: 500 }
+      );
+    }
 
     // Insert OrderItems
     if (orderItemsPayload.length > 0) {
@@ -206,7 +277,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(
+    // Update session placed orders
+    const updatedPlacedIds = Array.from(new Set([...placedOrderIds, orderId, orderNumber]));
+
+    const response = NextResponse.json(
       {
         success: true,
         message: "Order placed successfully",
@@ -217,6 +291,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
+
+    // Save placed order id to cookie for secure browser continuity
+    response.cookies.set("medico_placed_order_ids", JSON.stringify(updatedPlacedIds), {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+
+    return response;
   } catch (error: any) {
     console.error("POST /api/orders error:", error?.message);
     return NextResponse.json(

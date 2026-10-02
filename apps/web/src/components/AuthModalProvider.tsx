@@ -8,10 +8,24 @@ import { useCartStore } from "@/lib/cart-store";
 
 export default function AuthModalProvider() {
   const { isOpen, reason, closeAuthModal } = useAuthModalStore();
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
   const addItem = useCartStore((state) => state.addItem);
   const openDrawer = useCartStore((state) => state.openDrawer);
   const executedRef = useRef(false);
+
+  // Synchronize authenticated user identity to cookie and localStorage for route handlers
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (typeof window !== "undefined") {
+      if (isSignedIn && user?.id) {
+        document.cookie = `userId=${encodeURIComponent(user.id)}; path=/; max-age=2592000; SameSite=Lax`;
+        localStorage.setItem("medico_user_id", user.id);
+      } else {
+        document.cookie = "userId=; path=/; max-age=0; SameSite=Lax";
+        localStorage.removeItem("medico_user_id");
+      }
+    }
+  }, [isLoaded, isSignedIn, user?.id]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || executedRef.current) return;
@@ -46,4 +60,3 @@ export default function AuthModalProvider() {
 
   return <AuthModal isOpen={isOpen} onClose={closeAuthModal} reason={reason} />;
 }
-

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseConfig, getSupabaseHeaders } from "@/lib/supabase";
+import { getAuthenticatedUser } from "@/lib/server-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ success: false, message: "Order ID is required" }, { status: 400 });
     }
 
+    const userCtx = await getAuthenticatedUser(req);
+    const { userId, placedOrderIds } = userCtx;
+
     // Try finding by UUID id or orderNumber
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
     const filter = isUuid ? `id=eq.${orderId}` : `orderNumber=eq.${orderId}`;
@@ -30,6 +34,21 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       const orders = await res.json();
       if (orders && orders.length > 0) {
         const order = orders[0];
+
+        // STRICT OWNERSHIP CHECK:
+        // The order must belong to the authenticated user, or match the browser's placed order tracking
+        const isOwner =
+          (userId && order.userId === userId) ||
+          placedOrderIds.includes(order.id) ||
+          placedOrderIds.includes(order.orderNumber);
+
+        if (!isOwner) {
+          return NextResponse.json(
+            { success: false, message: "Unauthorized: You do not have access to view this order." },
+            { status: 403 }
+          );
+        }
+
         // Sort status history chronologically
         if (order.statusHistory && Array.isArray(order.statusHistory)) {
           order.statusHistory.sort(

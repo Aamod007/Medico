@@ -19,10 +19,17 @@ export async function fetchApi<T = any>(
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
   };
+
+  if (typeof window !== "undefined") {
+    const localUserId = localStorage.getItem("medico_user_id");
+    if (localUserId) {
+      headers["x-user-id"] = localUserId;
+    }
+  }
 
   try {
     let res: Response;

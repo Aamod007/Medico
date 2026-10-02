@@ -104,7 +104,21 @@ export async function ensureUserExistsInDb(
     }
 
     // 2. Generate unique email and phone to satisfy PostgreSQL unique constraints
-    const safeEmail = email || `${userId.replace(/[^a-zA-Z0-9_-]/g, "")}@user.medico.in`;
+    let safeEmail = email || `${userId.replace(/[^a-zA-Z0-9_-]/g, "")}@user.medico.in`;
+
+    // Verify email is not already claimed by another user record
+    try {
+      const emailCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/User?email=eq.${encodeURIComponent(safeEmail)}&select=id`,
+        { headers, cache: "no-store" }
+      );
+      if (emailCheck.ok) {
+        const existingEmailUsers = await emailCheck.json();
+        if (existingEmailUsers && existingEmailUsers.length > 0 && existingEmailUsers[0].id !== userId) {
+          safeEmail = `${userId.replace(/[^a-zA-Z0-9_-]/g, "")}-${Date.now().toString(36)}@user.medico.in`;
+        }
+      }
+    } catch {}
 
     // Ensure phone is 10 digits and distinct
     let cleanPhone = phone ? phone.replace(/\D/g, "").slice(-10) : "";
@@ -114,6 +128,25 @@ export async function ensureUserExistsInDb(
       );
       cleanPhone = `9${String(hash).padStart(9, "0").slice(-9)}`;
     }
+
+    // Verify phone is not already claimed by another user record in PostgreSQL
+    try {
+      const phoneCheck = await fetch(
+        `${SUPABASE_URL}/rest/v1/User?phone=eq.${encodeURIComponent(cleanPhone)}&select=id`,
+        { headers, cache: "no-store" }
+      );
+      if (phoneCheck.ok) {
+        const existingPhoneUsers = await phoneCheck.json();
+        if (existingPhoneUsers && existingPhoneUsers.length > 0 && existingPhoneUsers[0].id !== userId) {
+          // Phone belongs to another user record. Use deterministic unique phone for User table
+          // Note: Address.phone preserves the customer's actual input phone without conflict.
+          const hash = Math.abs(
+            (userId + "phone").split("").reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
+          );
+          cleanPhone = `9${String(hash).padStart(9, "0").slice(-9)}`;
+        }
+      }
+    } catch {}
 
     const payload = {
       id: userId,
@@ -128,7 +161,7 @@ export async function ensureUserExistsInDb(
       updatedAt: new Date().toISOString(),
     };
 
-    const createRes = await fetch(`${SUPABASE_URL}/rest/v1/User`, {
+    let createRes = await fetch(`${SUPABASE_URL}/rest/v1/User`, {
       method: "POST",
       headers: {
         ...headers,
@@ -137,7 +170,43 @@ export async function ensureUserExistsInDb(
       body: JSON.stringify(payload),
     });
 
-    return createRes.ok;
+    if (createRes.ok) {
+      return true;
+    }
+
+    // Fallback attempt: if initial insert conflicted on any unindexed field, retry with timestamp-guaranteed uniqueness
+    const errText = await createRes.text();
+    console.warn("User insert initial attempt failed, attempting fallback payload:", errText);
+
+    const fallbackPayload = {
+      id: userId,
+      name: name || "Verified Customer",
+      email: `${userId.replace(/[^a-zA-Z0-9_-]/g, "")}-${Date.now().toString(36)}@user.medico.in`,
+      phone: `9${String(Date.now()).slice(-9)}`,
+      role: "CUSTOMER",
+      isActive: true,
+      isPhoneVerified: true,
+      isEmailVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const retryRes = await fetch(`${SUPABASE_URL}/rest/v1/User`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify(fallbackPayload),
+    });
+
+    if (retryRes.ok) {
+      return true;
+    }
+
+    const retryErr = await retryRes.text();
+    console.error("User insert fallback attempt failed:", retryRes.status, retryErr);
+    return false;
   } catch (err: any) {
     console.error("ensureUserExistsInDb error:", err?.message);
     return false;

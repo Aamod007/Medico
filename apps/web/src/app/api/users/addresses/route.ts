@@ -78,8 +78,14 @@ export async function POST(req: NextRequest) {
     const rawPhoneDigits = String(phone).replace(/\D/g, "");
     const cleanPhone = rawPhoneDigits.length >= 10 ? rawPhoneDigits.slice(-10) : rawPhoneDigits;
 
-    // Ensure User row exists in DB
-    await ensureUserExistsInDb(userId, email, fullName || name, cleanPhone || clerkPhone);
+    // Ensure User row exists in DB before attempting Address foreign key reference
+    const userExists = await ensureUserExistsInDb(userId, email, fullName || name, cleanPhone || clerkPhone);
+    if (!userExists) {
+      return NextResponse.json(
+        { success: false, message: "Could not initialize customer account in database. Please try signing out and in again." },
+        { status: 500 }
+      );
+    }
 
     const addressId = crypto.randomUUID();
 

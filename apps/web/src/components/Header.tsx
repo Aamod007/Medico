@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -26,12 +26,11 @@ import {
   LayoutGrid,
   Tag,
   Package,
-  Navigation,
 } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { useWishlistStore } from "@/lib/wishlist-store";
 import { api } from "@/lib/api";
-import { resolvePincode, detectUserLocation } from "@/lib/location";
+import { resolvePincode } from "@/lib/location";
 import { SignInButton, Show, UserButton, useUser } from "@clerk/nextjs";
 import { BRAND_CONFIG } from "@medico/shared";
 
@@ -47,11 +46,10 @@ export default function Header() {
 
   const wishlistCount = mounted ? wishlistIds.size : 0;
 
-  const { user, isSignedIn } = useUser();
+  const { user, isSignedIn, isLoaded: isUserLoaded } = useUser();
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [isDeliveryDropdownOpen, setIsDeliveryDropdownOpen] = useState(false);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Category dropdown inside search pill
@@ -64,20 +62,26 @@ export default function Header() {
   // Delivery location management
   const [modalPincode, setModalPincode] = useState("");
   const [pincodeError, setPincodeError] = useState("");
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
 
   const popularCities = [
     { name: "Bangalore", pin: "560103", state: "Karnataka" },
     { name: "Mumbai", pin: "400001", state: "Maharashtra" },
     { name: "Delhi NCR", pin: "110001", state: "Delhi" },
-    { name: "Lucknow", pin: "226004", state: "Uttar Pradesh" },
-    { name: "Jalandhar", pin: "144411", state: "Punjab" },
     { name: "Hyderabad", pin: "500001", state: "Telangana" },
     { name: "Chennai", pin: "600001", state: "Tamil Nadu" },
     { name: "Pune", pin: "411001", state: "Maharashtra" },
     { name: "Kolkata", pin: "700001", state: "West Bengal" },
     { name: "Ahmedabad", pin: "380001", state: "Gujarat" },
     { name: "Jaipur", pin: "302001", state: "Rajasthan" },
+    { name: "Lucknow", pin: "226004", state: "Uttar Pradesh" },
     { name: "Chandigarh", pin: "160017", state: "Punjab" },
+    { name: "Jalandhar", pin: "144411", state: "Punjab" },
+    { name: "Surat", pin: "395001", state: "Gujarat" },
+    { name: "Kochi", pin: "682001", state: "Kerala" },
+    { name: "Bhopal", pin: "462001", state: "Madhya Pradesh" },
+    { name: "Indore", pin: "452001", state: "Madhya Pradesh" },
   ];
 
 
@@ -130,7 +134,7 @@ export default function Header() {
     })),
   ];
 
-  // Initialize location from localStorage or auto-detect if not set
+  // Initialize location from localStorage (fast client display)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedPin = localStorage.getItem("medico_pincode");
@@ -139,22 +143,6 @@ export default function Header() {
         setPincode(savedPin);
         setModalPincode(savedPin);
         setCity(savedCity);
-      } else {
-        // Auto-detect location on first visit
-        detectUserLocation().then((loc) => {
-          if (loc.success && loc.city && loc.pincode) {
-            setPincode(loc.pincode);
-            setModalPincode(loc.pincode);
-            setCity(loc.city);
-            localStorage.setItem("medico_pincode", loc.pincode);
-            localStorage.setItem("medico_city", loc.city);
-            window.dispatchEvent(
-              new CustomEvent("medico-location-changed", {
-                detail: { pincode: loc.pincode, city: loc.city },
-              })
-            );
-          }
-        });
       }
 
       // Listen for location changes from other components (e.g. checkout, address selection)
@@ -170,107 +158,181 @@ export default function Header() {
     }
   }, []);
 
-  // User's saved addresses available for optional manual selection in the location dropdown
-  const [userSavedAddresses, setUserSavedAddresses] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!user) {
-      setUserSavedAddresses([]);
-      return;
-    }
-    api
-      .get("/users/addresses")
-      .then((res) => {
-        if (res.success && Array.isArray(res.data)) {
-          setUserSavedAddresses(res.data);
-        }
-      })
-      .catch(() => {});
-  }, [user]);
-
-  const handleSelectSavedAddress = (addr: any) => {
-    if (addr?.city && addr?.pincode) {
-      setCity(addr.city);
-      setPincode(addr.pincode);
-      setModalPincode(addr.pincode);
-      setPincodeError("");
+  const saveLocationToAccount = useCallback(
+    async (pin: string, cityName: string) => {
       if (typeof window !== "undefined") {
-        localStorage.setItem("medico_pincode", addr.pincode);
-        localStorage.setItem("medico_city", addr.city);
+        localStorage.setItem("medico_pincode", pin);
+        localStorage.setItem("medico_city", cityName);
         window.dispatchEvent(
-          new CustomEvent("medico-location-changed", {
-            detail: { pincode: addr.pincode, city: addr.city },
-          })
+          new CustomEvent("medico-location-changed", { detail: { pincode: pin, city: cityName } })
         );
       }
-      setIsDeliveryDropdownOpen(false);
-    }
-  };
 
-  const handleDetectCurrentLocation = async () => {
-    setIsDetectingLocation(true);
-    setPincodeError("");
-    try {
-      const loc = await detectUserLocation();
-      if (loc.success && loc.city && loc.pincode) {
-        setCity(loc.city);
-        setPincode(loc.pincode);
-        setModalPincode(loc.pincode);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("medico_pincode", loc.pincode);
-          localStorage.setItem("medico_city", loc.city);
+      if (isSignedIn && user) {
+        try {
+          await user.update({
+            unsafeMetadata: {
+              ...user.unsafeMetadata,
+              deliveryPincode: pin,
+              deliveryCity: cityName,
+              pincode: pin,
+              city: cityName,
+            },
+          });
+        } catch (err) {
+          console.warn("Clerk metadata save warning:", err);
+        }
+
+        try {
+          await fetch("/api/users/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pincode: pin, city: cityName }),
+          });
+        } catch (err) {
+          console.warn("API location save warning:", err);
+        }
+      }
+    },
+    [isSignedIn, user]
+  );
+
+  // Auto-fill location from User Account when user returns / signs in
+  useEffect(() => {
+    if (!isUserLoaded || !isSignedIn || !user) return;
+
+    let isMounted = true;
+    async function loadAccountLocation() {
+      try {
+        // 1. Try Clerk user metadata (instant)
+        const metaPin = (user?.unsafeMetadata?.deliveryPincode || user?.unsafeMetadata?.pincode) as string | undefined;
+        const metaCity = (user?.unsafeMetadata?.deliveryCity || user?.unsafeMetadata?.city) as string | undefined;
+
+        if (metaPin && metaCity) {
+          if (!isMounted) return;
+          setPincode(metaPin);
+          setModalPincode(metaPin);
+          setCity(metaCity);
+          localStorage.setItem("medico_pincode", metaPin);
+          localStorage.setItem("medico_city", metaCity);
           window.dispatchEvent(
             new CustomEvent("medico-location-changed", {
-              detail: { pincode: loc.pincode, city: loc.city },
+              detail: { pincode: metaPin, city: metaCity },
             })
           );
+          return;
         }
-        setIsDeliveryDropdownOpen(false);
-      } else {
-        setPincodeError(loc.error || "Could not detect location. Please enter PIN code manually.");
-      }
-    } catch {
-      setPincodeError("Location detection failed. Please enter your PIN code.");
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
 
-  const handleSelectCity = (c: { name: string; pin: string }) => {
+        // 2. Fetch from /api/users/location
+        const res = await fetch("/api/users/location");
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && json?.data?.pincode && json?.data?.city) {
+            if (!isMounted) return;
+            const accPin = String(json.data.pincode);
+            const accCity = String(json.data.city);
+            setPincode(accPin);
+            setModalPincode(accPin);
+            setCity(accCity);
+            localStorage.setItem("medico_pincode", accPin);
+            localStorage.setItem("medico_city", accCity);
+
+            // Sync with Clerk metadata for instantaneous loads
+            if (user) {
+              try {
+                await user.update({
+                  unsafeMetadata: {
+                    ...user.unsafeMetadata,
+                    deliveryPincode: accPin,
+                    deliveryCity: accCity,
+                  },
+                });
+              } catch {}
+            }
+
+            window.dispatchEvent(
+              new CustomEvent("medico-location-changed", {
+                detail: { pincode: accPin, city: accCity },
+              })
+            );
+            return;
+          }
+        }
+
+        // 3. If account has no saved location yet, but localStorage has one from earlier:
+        const localPin = localStorage.getItem("medico_pincode");
+        const localCity = localStorage.getItem("medico_city");
+        if (localPin && localCity) {
+          await saveLocationToAccount(localPin, localCity);
+        }
+      } catch (e) {
+        console.warn("Could not load account location:", e);
+      }
+    }
+
+    loadAccountLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, [isUserLoaded, isSignedIn, user, saveLocationToAccount]);
+
+  const handleSelectCity = async (c: { name: string; pin: string }) => {
+    setPincodeError("");
     setCity(c.name);
     setPincode(c.pin);
     setModalPincode(c.pin);
-    setPincodeError("");
-    if (typeof window !== "undefined") {
-      localStorage.setItem("medico_pincode", c.pin);
-      localStorage.setItem("medico_city", c.name);
-      window.dispatchEvent(
-        new CustomEvent("medico-location-changed", { detail: { pincode: c.pin, city: c.name } })
-      );
-    }
-    setIsDeliveryDropdownOpen(false);
+    setIsSavingLocation(true);
+    setSaveSuccessMsg(isSignedIn ? `✓ Location saved to your account (${c.name})` : `✓ Location set to ${c.name}`);
+
+    await saveLocationToAccount(c.pin, c.name);
+    setIsSavingLocation(false);
+
+    setTimeout(() => {
+      setIsDeliveryDropdownOpen(false);
+      setSaveSuccessMsg("");
+    }, 400);
   };
 
-  const handleApplyPincode = (e: React.FormEvent) => {
+  const handleApplyPincode = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const info = resolvePincode(modalPincode);
+    setPincodeError("");
+
+    const cleanPin = modalPincode.trim();
+    if (!cleanPin || cleanPin.length !== 6) {
+      setPincodeError("Please enter a valid 6-digit Indian PIN code");
+      return;
+    }
+
+    const info = resolvePincode(cleanPin);
     if (info.valid && info.city) {
       setPincodeError("");
       setCity(info.city);
-      setPincode(modalPincode);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("medico_pincode", modalPincode);
-        localStorage.setItem("medico_city", info.city);
-        window.dispatchEvent(
-          new CustomEvent("medico-location-changed", { detail: { pincode: modalPincode, city: info.city } })
-        );
-      }
-      setIsDeliveryDropdownOpen(false);
+      setPincode(cleanPin);
+      setIsSavingLocation(true);
+      setSaveSuccessMsg(isSignedIn ? `✓ Saved to your account (${info.city})` : `✓ Location set to ${info.city}`);
+
+      await saveLocationToAccount(cleanPin, info.city);
+      setIsSavingLocation(false);
+
+      setTimeout(() => {
+        setIsDeliveryDropdownOpen(false);
+        setSaveSuccessMsg("");
+      }, 500);
     } else {
       setPincodeError(info.error || "Please enter a valid 6-digit Indian PIN code");
     }
   };
+
+  const resolvedPreview = useMemo(() => {
+    if (modalPincode.length === 6) {
+      const res = resolvePincode(modalPincode);
+      if (res.valid && res.city) {
+        return `${res.city}${res.state ? `, ${res.state}` : ""}`;
+      }
+    }
+    return "";
+  }, [modalPincode]);
 
 
   // Search autocomplete state
@@ -400,7 +462,7 @@ export default function Header() {
               {isDeliveryDropdownOpen && (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute top-[calc(100%+10px)] left-0 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-[#D7DEDB] z-50 p-4 text-[#0F2A22] animate-in fade-in slide-in-from-top-2 duration-150"
+                  className="absolute top-[calc(100%+10px)] left-0 w-72 sm:w-84 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-[#D7DEDB] z-50 p-4 text-[#0F2A22] animate-in fade-in slide-in-from-top-2 duration-150"
                 >
                   {/* Dropdown Header */}
                   <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
@@ -417,101 +479,71 @@ export default function Header() {
                     </button>
                   </div>
 
-                  {/* Auto-Detect Current Location Button */}
-                  <div className="pt-2 pb-1">
-                    <button
-                      type="button"
-                      disabled={isDetectingLocation}
-                      onClick={handleDetectCurrentLocation}
-                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#FAF3EA] hover:bg-[#f5e6d3] text-[#0B4A3A] font-bold text-xs transition cursor-pointer border border-[#FDE6D3] disabled:opacity-50 shadow-2xs"
-                    >
-                      <Navigation className={`w-3.5 h-3.5 text-[#10B981] ${isDetectingLocation ? "animate-spin" : ""}`} />
-                      <span>{isDetectingLocation ? "Detecting location..." : "Use Current Location (GPS / IP)"}</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2 my-1 text-[10px] text-gray-400 font-bold justify-center">
-                    <div className="flex-1 h-px bg-gray-100" />
-                    <span>OR ENTER PINCODE</span>
-                    <div className="flex-1 h-px bg-gray-100" />
-                  </div>
-
                   {/* Pincode Search / Input */}
-                  <form onSubmit={handleApplyPincode} className="py-1.5">
+                  <form onSubmit={handleApplyPincode} className="pt-3 pb-1">
+                    <label className="block text-[11px] font-bold text-[#0F2A22] mb-1.5">
+                      Enter Area PIN Code
+                    </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={modalPincode}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setModalPincode(val);
-                          setPincodeError("");
-                        }}
-                        placeholder="Enter 6-digit Pincode"
-                        className="flex-1 bg-[#F4F6F5] border border-[#D7DEDB] focus:border-[#0B4A3A] rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A22] focus:outline-none tracking-wider"
-                      />
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={modalPincode}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            setModalPincode(val);
+                            setPincodeError("");
+                          }}
+                          placeholder="e.g. 560001"
+                          className="w-full bg-[#F4F6F5] border border-[#D7DEDB] focus:border-[#0B4A3A] focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-[#0F2A22] focus:outline-none tracking-wider placeholder:font-normal placeholder:tracking-normal transition"
+                        />
+                      </div>
                       <button
                         type="submit"
-                        className="px-3.5 py-2 rounded-xl bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                        disabled={isSavingLocation}
+                        className="px-4 py-2 rounded-xl bg-[#0B4A3A] hover:bg-[#07362a] text-white text-xs font-bold transition shadow-xs cursor-pointer flex-shrink-0 disabled:opacity-50"
                       >
-                        Apply
+                        {isSavingLocation ? "Saving..." : "Save"}
                       </button>
                     </div>
-                    {pincodeError && <p className="text-[10px] font-semibold text-red-600 mt-1 pl-1">{pincodeError}</p>}
+
+                    {/* Live Pincode Preview / Verification */}
+                    {resolvedPreview && !pincodeError && (
+                      <p className="text-[10px] font-semibold text-[#10B981] mt-1.5 pl-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-[#10B981] flex-shrink-0" />
+                        <span>{resolvedPreview}</span>
+                      </p>
+                    )}
+
+                    {pincodeError && (
+                      <p className="text-[10px] font-semibold text-red-600 mt-1 pl-1">
+                        {pincodeError}
+                      </p>
+                    )}
+
+                    {saveSuccessMsg && (
+                      <p className="text-[10px] font-semibold text-[#10B981] mt-1 pl-1 animate-in fade-in duration-150">
+                        {saveSuccessMsg}
+                      </p>
+                    )}
                   </form>
 
-
-                  <div className="border-t border-gray-100 my-1" />
-
-                  {/* Saved User Addresses if available */}
-                  {userSavedAddresses.length > 0 && (
-                    <div className="pb-2">
-                      <div className="text-[10px] font-bold text-[#5B6B65] uppercase tracking-wider py-1 px-1">
-                        Your Saved Addresses
-                      </div>
-                      <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                        {userSavedAddresses.map((addr) => {
-                          const isSelected = pincode === addr.pincode;
-                          return (
-                            <button
-                              key={addr.id}
-                              type="button"
-                              onClick={() => handleSelectSavedAddress(addr)}
-                              className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
-                                isSelected
-                                  ? "bg-[#FAF3EA] text-[#0B4A3A] font-bold border border-[#0B4A3A]/20"
-                                  : "text-gray-700 hover:bg-[#F4F6F5]"
-                              }`}
-                            >
-                              <div className="truncate mr-2">
-                                <span className="font-bold text-[#0F2A22] text-xs">
-                                  {addr.fullName || addr.type}
-                                </span>
-                                <span className="text-[11px] text-[#5B6B65] block truncate">
-                                  {addr.addressLine1}, {addr.city} ({addr.pincode})
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981] flex-shrink-0" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="border-t border-gray-100 my-1.5" />
-                    </div>
-                  )}
+                  <div className="border-t border-gray-100 my-2.5" />
 
                   {/* City List Header */}
-                  <div className="text-[10px] font-bold text-[#5B6B65] uppercase tracking-wider py-1.5 px-1">
-                    Select City / Metro Hub
+                  <div className="flex items-center justify-between pb-1.5 px-0.5">
+                    <span className="text-[10px] font-bold text-[#5B6B65] uppercase tracking-wider">
+                      Select City
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-medium">Click to select</span>
                   </div>
 
                   {/* Clean List of Cities */}
                   <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
                     {popularCities.map((c) => {
-                      const isSelected = pincode === c.pin;
+                      const isSelected = city === c.name || (pincode && pincode === c.pin);
                       return (
                         <button
                           key={c.name}
@@ -535,6 +567,18 @@ export default function Header() {
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Account Auto-fill Info Footer */}
+                  <div className="mt-3 pt-2.5 border-t border-gray-100 text-[10px] text-center text-gray-500">
+                    {isSignedIn ? (
+                      <span className="text-[#0B4A3A] font-semibold flex items-center justify-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-[#10B981]" />
+                        Saved to your account • Auto-fills on your next visit
+                      </span>
+                    ) : (
+                      <span>Saved location will auto-fill next time you return</span>
+                    )}
                   </div>
                 </div>
               )}
